@@ -41,3 +41,31 @@ export const fetchMovieDetails = async (movieID: string): Promise<MovieDetails> 
         throw error;
     }
 }
+
+const BACKEND_BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:3001'; // Default to localhost:3001
+
+export interface BackendTrendingMovie {
+    tmdb_id: number;
+    title: string;
+    poster_url: string;
+    weekly_search_count: number;
+}
+
+export const fetchTrendingMoviesFromBackend = async (): Promise<TrendingMovie[] | undefined> => {
+    try {
+        const response = await fetch(`${BACKEND_BASE_URL}/api/movies/trending`);
+        if (!response.ok) {
+            const errorData = await response.text();
+            throw new Error(`Failed to fetch trending movies from backend: ${response.status} ${errorData}`);
+        }
+        const data: BackendTrendingMovie[] = await response.json();
+        // fix return for TrendingMovie
+        return data.map(movie => ({
+            ...movie,
+            movie_id: movie.tmdb_id,
+        }));
+    } catch (error) {
+        console.error('Error fetching trending movies from backend:', error);
+        throw error;
+    }
+};
