@@ -61,8 +61,11 @@ export const fetchTrendingMoviesFromBackend = async (): Promise<TrendingMovie[] 
         const data: BackendTrendingMovie[] = await response.json();
         // fix return for TrendingMovie
         return data.map(movie => ({
-            ...movie,
+            title: movie.title,
+            poster_url: movie.poster_url,
+            count: movie.weekly_search_count,
             movie_id: movie.tmdb_id,
+            searchTerm: '',
         }));
     } catch (error) {
         console.error('Error fetching trending movies from backend:', error);
