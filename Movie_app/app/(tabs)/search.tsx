@@ -7,6 +7,7 @@ import {icons} from "@/constants/icons";
 import SearchBar from "@/components/SearchBar";
 import {useEffect, useState} from "react";
 import {updateSearchCount} from "@/services/appwrite";
+import { logMovieSearchToBackend } from '@/services/api';
 
 const Search = () => {
     const [searchQuery, setSearchQuery] = useState("");
@@ -36,7 +37,15 @@ const Search = () => {
     useEffect(() => {
         // Call updateSearchCount only if there are results
         if (movies?.length! > 0 && movies?.[0]) {
-            updateSearchCount(searchQuery, movies[0]);
+            const firstMovie = movies[0];
+            logMovieSearchToBackend({
+                tmdb_id: firstMovie.id, // Assuming Movie interface has id as tmdb_id
+                title: firstMovie.title,
+                poster_path: firstMovie.poster_path,
+            }).catch(logError => {
+                // Optional: Handle or log errors from logMovieSearchToBackend specifically
+                console.error('Failed to log movie search to backend:', logError);
+            });
         }
     }, [movies]);
 

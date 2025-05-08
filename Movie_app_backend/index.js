@@ -33,6 +33,7 @@ pool.on('error', (err) => {
 // POST /api/searches - Track a search event
 app.post('/api/searches', async (req, res, next) => {
   const { tmdb_id, title, poster_url } = req.body;
+  
 
   // Basic validation
   if (typeof tmdb_id !== 'number' || !title || !poster_url) {
@@ -93,10 +94,45 @@ app.get('/api/movies/trending', async (req, res, next) => {
       LIMIT 10;
     `;
     const result = await client.query(trendingQuery);
+    console.log(result.rows);
     res.status(200).json(result.rows);
   } catch (error) {
     console.error('Error fetching trending movies:', error);
     next(error); // Pass error to the error handling middleware
+  } finally {
+    client.release(); // Release the client back to the pool
+  }
+});
+
+// POST /api/admin/cleanup - Clean up old search events and orphaned movies
+app.post('/api/admin/cleanup', async (req, res, next) => {
+  // Default to deleting search events older than 14 days.
+  // The cron job can override this by sending a 'daysOld' query parameter.
+  const daysOldThreshold = 14;
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN'); // Start transaction
+
+    // 1. Delete search events older than the specified threshold
+    const deleteEventsQuery = `
+      DELETE FROM search_events
+      WHERE searched_at < NOW() - ($1::integer * INTERVAL '1 day');
+    `;
+    const deleteEventsResult = await client.query(deleteEventsQuery, [daysOldThreshold]);
+    const deletedEventsCount = deleteEventsResult.rowCount;
+
+    await client.query('COMMIT'); // Commit transaction
+
+    res.status(200).json({
+      message: `Cleanup successful. Processed events older than ${daysOldThreshold} days.`,
+      deletedSearchEvents: deletedEventsCount
+    });
+
+  } catch (error) {
+    await client.query('ROLLBACK'); // Rollback transaction on error
+    console.error('Error during data cleanup:', error);
+    next(error); // Pass error to the general error handler
   } finally {
     client.release(); // Release the client back to the pool
   }

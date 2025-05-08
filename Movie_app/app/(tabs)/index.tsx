@@ -8,6 +8,7 @@ import {fetchMovies} from "@/services/api";
 import MovieCard from "@/components/MovieCard";
 import {getTrendingMovies} from "@/services/appwrite";
 import TrendingCard from "@/components/TrendingCard";
+import { fetchTrendingMoviesFromBackend } from "@/services/api";
 
 
 export default function Index() {
@@ -17,13 +18,7 @@ export default function Index() {
         data: trendingMovies,
         loading: trendingLoading,
         error: trendingError,
-    } = useFetch(getTrendingMovies)
-
-    // const {
-    //     data: trendingMovies,
-    //     loading: trendingLoading,
-    //     error: trendingError,
-    // } = useFetch(fetchTrendingMoviesFromBackend);
+    } = useFetch(fetchTrendingMoviesFromBackend);
 
     const {
         data: movies,
