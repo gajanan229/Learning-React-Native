@@ -77,9 +77,11 @@ export interface LogSearchPayload {
     tmdb_id: number;
     title: string;
     poster_url: string;
+    runtime_minutes: number;
+    genres: Array<string>;
 }
 
-export const logMovieSearchToBackend = async (movieData: { tmdb_id: number; title: string; poster_path: string | null }): Promise<void> => {
+export const logMovieSearchToBackend = async (movieData: { tmdb_id: number; title: string; poster_path: string | null; runtime_minutes: number; genres: Array<string>; }): Promise<void> => {
     if (!movieData.poster_path) {
         // The backend movies table requires a non-null poster_url.
         // If poster_path is null, we cannot construct a valid poster_url.
@@ -93,6 +95,8 @@ export const logMovieSearchToBackend = async (movieData: { tmdb_id: number; titl
         tmdb_id: movieData.tmdb_id,
         title: movieData.title,
         poster_url: `https://image.tmdb.org/t/p/w500${movieData.poster_path}`, // Construct full URL
+        runtime_minutes: movieData.runtime_minutes,
+        genres: movieData.genres
     };
 
     try {

@@ -8,6 +8,7 @@ import SearchBar from "@/components/SearchBar";
 import {useEffect, useState} from "react";
 import {updateSearchCount} from "@/services/appwrite";
 import { logMovieSearchToBackend } from '@/services/api';
+import { fetchMovieDetails } from '@/services/api';
 
 const Search = () => {
     const [searchQuery, setSearchQuery] = useState("");
@@ -20,6 +21,13 @@ const Search = () => {
     } = useFetch(() => fetchMovies({
         query: searchQuery
     }))
+
+    // State for the first movie from search results, to be used for logging
+    const [firstMovieForLog, setFirstMovieForLog] = useState<Movie | null>(null);
+    // State for the fetched details of the first movie
+    const [detailedMovieForLog, setDetailedMovieForLog] = useState<MovieDetails | null>(null);
+    // State to track if movie details are being fetched
+    const [isFetchingDetailsForLog, setIsFetchingDetailsForLog] = useState(false);
 
     useEffect(() => {
         const timeoutId = setTimeout(async () => {
@@ -34,20 +42,69 @@ const Search = () => {
         return () => clearTimeout(timeoutId);
     }, [searchQuery]);
 
+    // Effect to identify the first movie and trigger detail fetching for logging
     useEffect(() => {
-        // Call updateSearchCount only if there are results
-        if (movies?.length! > 0 && movies?.[0]) {
-            const firstMovie = movies[0];
-            logMovieSearchToBackend({
-                tmdb_id: firstMovie.id, // Assuming Movie interface has id as tmdb_id
-                title: firstMovie.title,
-                poster_path: firstMovie.poster_path,
-            }).catch(logError => {
-                // Optional: Handle or log errors from logMovieSearchToBackend specifically
-                console.error('Failed to log movie search to backend:', logError);
-            });
+        if (movies && movies.length > 0 && movies[0]) {
+            const currentFirstMovie = movies[0];
+            setFirstMovieForLog(currentFirstMovie);
+
+            if (currentFirstMovie.id) {
+                setIsFetchingDetailsForLog(true);
+                setDetailedMovieForLog(null); // Reset previous details
+                fetchMovieDetails(currentFirstMovie.id.toString())
+                    .then(details => {
+                        setDetailedMovieForLog(details);
+                    })
+                    .catch(err => {
+                        console.error("Failed to fetch movie details for logging:", err);
+                        setDetailedMovieForLog(null); // Ensure it's null on error
+                    })
+                    .finally(() => {
+                        setIsFetchingDetailsForLog(false);
+                    });
+            } else {
+                // No valid ID for the first movie
+                setFirstMovieForLog(null);
+                setDetailedMovieForLog(null);
+                setIsFetchingDetailsForLog(false);
+            }
+        } else {
+            // No movies in the list
+            setFirstMovieForLog(null);
+            setDetailedMovieForLog(null);
+            setIsFetchingDetailsForLog(false);
         }
-    }, [movies]);
+    }, [movies]); // This effect runs when 'movies' array changes
+
+    useEffect(() => {
+        // Proceed only if we have a firstMovie, its ID, and we are not currently fetching details
+        if (firstMovieForLog && firstMovieForLog.id && !isFetchingDetailsForLog) {
+            if (detailedMovieForLog) {
+                // Details were successfully fetched
+                logMovieSearchToBackend({
+                    tmdb_id: firstMovieForLog.id,
+                    title: firstMovieForLog.title,
+                    poster_path: firstMovieForLog.poster_path,
+                    runtime_minutes: detailedMovieForLog.runtime || 0,
+                    genres: detailedMovieForLog.genres ? detailedMovieForLog.genres.map(genre => genre.name) : []
+                }).catch(logError => {
+                    console.error('Failed to log movie search to backend (with details):', logError);
+                });
+            } else {
+                // Details were not fetched (e.g., fetch failed, or no details available)
+                // Log with default/fallback values for runtime and genres
+                logMovieSearchToBackend({
+                    tmdb_id: firstMovieForLog.id, // Assuming Movie interface has id as tmdb_id
+                    title: firstMovieForLog.title,
+                    poster_path: firstMovieForLog.poster_path,
+                    runtime_minutes: 0,
+                    genres: []
+                }).catch(logError => {
+                    console.error('Failed to log movie search to backend (no details/fallback):', logError);
+                });
+            }
+        }
+    }, [firstMovieForLog, detailedMovieForLog, isFetchingDetailsForLog]);
 
     return (
         <View className="flex-1 bg-primary">

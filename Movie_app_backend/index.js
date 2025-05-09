@@ -32,7 +32,7 @@ pool.on('error', (err) => {
 
 // POST /api/searches - Track a search event
 app.post('/api/searches', async (req, res, next) => {
-  const { tmdb_id, title, poster_url } = req.body;
+  const { tmdb_id, title, poster_url, runtime_minutes, genres } = req.body;
   
 
   // Basic validation
@@ -46,11 +46,11 @@ app.post('/api/searches', async (req, res, next) => {
 
     // 1. Upsert movie information
     const upsertMovieQuery = `
-      INSERT INTO movies (tmdb_id, title, poster_url)
-      VALUES ($1, $2, $3)
+      INSERT INTO movies (tmdb_id, title, poster_url, runtime_minutes, genres)
+      VALUES ($1, $2, $3, $4, $5)
       ON CONFLICT (tmdb_id) DO NOTHING;
     `;
-    await client.query(upsertMovieQuery, [tmdb_id, title, poster_url]);
+    await client.query(upsertMovieQuery, [tmdb_id, title, poster_url, runtime_minutes, genres]);
 
     // 2. Log the search event
     const logSearchQuery = `
