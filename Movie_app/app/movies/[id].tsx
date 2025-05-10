@@ -1,9 +1,10 @@
-import {Image, Text, View, ScrollView, TouchableOpacity} from 'react-native'
-import React from 'react'
+import {Image, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet} from 'react-native'
+import React, {useEffect, useState} from 'react'
 import {useLocalSearchParams, useRouter } from "expo-router";
 import useFetch from "@/services/useFetch";
 import {fetchMovieDetails} from "@/services/api";
 import { icons } from "@/constants/icons";
+import {SafeAreaView} from "react-native-safe-area-context";
 
 interface MovieInfoProps {
     label: string;
@@ -22,8 +23,65 @@ const MovieInfo = ({ label, value }: MovieInfoProps) => (
 const MovieDetails = () => {
     const router = useRouter();
     const {id} = useLocalSearchParams();
+    const [movie, setMovie] = useState<MovieDetails | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    const { data: movie, loading } = useFetch(() => fetchMovieDetails(id as string));
+    // Placeholder state for watched status - to be implemented fully later
+    const [watchedEntry, setWatchedEntry] = useState<any | null>(null); 
+    // const [isFetchingWatchedStatus, setIsFetchingWatchedStatus] = useState(false);
+
+    useEffect(() => {
+        if (id) {
+            setLoading(true);
+            fetchMovieDetails(id as string)
+                .then(data => {
+                    setMovie(data);
+                    setError(null);
+                    // TODO: Fetch watched status here in a subsequent step
+                    // Example: fetchWatchedMovieStatusAPI(data.id).then(setWatchedEntry).catch(...);
+                })
+                .catch(err => {
+                    console.error("Failed to fetch movie details:", err);
+                    setError(err.message || "Could not load movie details.");
+                    setMovie(null);
+                })
+                .finally(() => setLoading(false));
+        } else {
+            setError("Movie ID not found.");
+            setLoading(false);
+        }
+    }, [id]);
+
+    const handleRateReviewPress = () => {
+        if (!movie) return;
+
+        router.push({
+            pathname: '/(modals)/rateMovie' as any, // Added 'as any' for potential TS path issue
+            params: {
+                movieId: movie.id.toString(),
+                movieTitle: movie.title,
+                moviePosterPath: movie.poster_path,
+                movieRuntime: movie.runtime?.toString() || null, // Ensure it's a string or null
+                movieGenres: JSON.stringify(movie.genres?.map(g => g.name) || []),
+                initialWatchedEntry: JSON.stringify(watchedEntry), // Pass current watchedEntry (null for now)
+            }
+        });
+    };
+
+    if (loading) {
+        return <SafeAreaView className="flex-1 bg-primary justify-center items-center"><ActivityIndicator size="large" color="#FFFFFF" /></SafeAreaView>;
+    }
+    if (error) {
+        return <SafeAreaView className="flex-1 bg-primary justify-center items-center"><Text className="text-red-500 text-lg">Error: {error}</Text></SafeAreaView>;
+    }
+    if (!movie) {
+        return <SafeAreaView className="flex-1 bg-primary justify-center items-center"><Text className="text-white text-lg">Movie not found.</Text></SafeAreaView>;
+    }
+
+    // Determine button icon (simplified for now)
+    const WatchlistIcon = watchedEntry ? icons.checkmarkFilled : icons.checkmarkOutline; // Example icons
+    const iconColor = watchedEntry ? '#22C55E' : '#9CA3AF'; // Green if watched, Gray if not
 
     return (
         <View className="bg-primary flex-1">
@@ -46,7 +104,12 @@ const MovieDetails = () => {
                     {/*</TouchableOpacity>*/}
                 </View>
                 <View className="flex-col items-start justify-center mt-5 px-5">
-                    <Text className="text-white font-bold text-xl">{movie?.title}</Text>
+                <View className="flex-row justify-between items-center">
+                            <Text className="text-white text-2xl font-bold w-[80%]" numberOfLines={2}>{movie.title}</Text>
+                            <TouchableOpacity onPress={handleRateReviewPress} className="p-2 bg-black/30 rounded-full">
+                                <Image source={WatchlistIcon} className="w-6 h-6" style={{tintColor: iconColor}} />
+                            </TouchableOpacity>
+                        </View>
                     <View className="flex-row items-center gap-x-1 mt-2">
                         <Text className="text-light-200 text-sm">
                             {movie?.release_date?.split("-")[0]} •

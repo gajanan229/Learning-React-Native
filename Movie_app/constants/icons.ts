@@ -6,6 +6,8 @@ import save from "@/assets/icons/save.png";
 import star from "@/assets/icons/star.png";
 import play from "@/assets/icons/play.png";
 import arrow from "@/assets/icons/arrow.png";
+import checkmarkFilled from "@/assets/icons/checkmarkFilled.png";
+import checkmarkOutline from "@/assets/icons/checkmarkOutline.png";
 
 export const icons = {
   home,
@@ -16,4 +18,6 @@ export const icons = {
   star,
   play,
   arrow,
+  checkmarkFilled,
+  checkmarkOutline,
 };
