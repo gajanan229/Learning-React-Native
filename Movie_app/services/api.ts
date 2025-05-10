@@ -1,3 +1,6 @@
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import * as SecureStore from 'expo-secure-store';
+
 export const TMBD_CONFIG = {
     baseUrl: 'https://api.themoviedb.org/3',
     API_KEY: process.env.EXPO_PUBLIC_MOVIE_API_KEY,
@@ -42,7 +45,40 @@ export const fetchMovieDetails = async (movieID: string): Promise<MovieDetails> 
     }
 }
 
-const BACKEND_BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL //|| 'http://localhost:3001'; // Default to localhost:3001
+export const BACKEND_BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL //|| 'http://localhost:3001'; // Default to localhost:3001
+
+const apiClient = axios.create({
+    baseURL: BACKEND_BASE_URL,
+    headers: {
+        'Content-Type': 'application/json',
+    }
+});
+
+// Request Interceptor for JWT
+apiClient.interceptors.request.use(
+    async (config: InternalAxiosRequestConfig) => {
+        // Do not attach token to auth routes like /login or /register
+        // Check against full path if baseURL is already set in client
+        const noAuthRoutes = [
+            '/api/auth/login',
+            '/api/auth/register'
+        ];
+        if (config.url && noAuthRoutes.includes(config.url)) {
+            return config;
+        }
+
+        const token = await SecureStore.getItemAsync('userToken');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error: AxiosError) => {
+        return Promise.reject(error);
+    }
+);
+
+export { apiClient };
 
 export interface BackendTrendingMovie {
     tmdb_id: number;
@@ -53,13 +89,8 @@ export interface BackendTrendingMovie {
 
 export const fetchTrendingMoviesFromBackend = async (): Promise<TrendingMovie[] | undefined> => {
     try {
-        const response = await fetch(`${BACKEND_BASE_URL}/api/movies/trending`);
-        if (!response.ok) {
-            const errorData = await response.text();
-            throw new Error(`Failed to fetch trending movies from backend: ${response.status} ${errorData}`);
-        }
-        const data: BackendTrendingMovie[] = await response.json();
-        // fix return for TrendingMovie
+        const response = await apiClient.get('/api/movies/trending');
+        const data: BackendTrendingMovie[] = response.data;
         return data.map(movie => ({
             title: movie.title,
             poster_url: movie.poster_url,
@@ -69,6 +100,9 @@ export const fetchTrendingMoviesFromBackend = async (): Promise<TrendingMovie[] 
         }));
     } catch (error) {
         console.error('Error fetching trending movies from backend:', error);
+        if (axios.isAxiosError(error) && error.response) {
+            throw new Error(`Failed to fetch trending movies: ${error.response.status} ${JSON.stringify(error.response.data)}`);
+        }
         throw error;
     }
 };
@@ -83,43 +117,25 @@ export interface LogSearchPayload {
 
 export const logMovieSearchToBackend = async (movieData: { tmdb_id: number; title: string; poster_path: string | null; runtime_minutes: number; genres: Array<string>; }): Promise<void> => {
     if (!movieData.poster_path) {
-        // The backend movies table requires a non-null poster_url.
-        // If poster_path is null, we cannot construct a valid poster_url.
         console.warn('Movie search log skipped: poster_path is missing for movie ID', movieData.tmdb_id);
-        // Optionally, throw an error if this case should be handled more strictly by the caller.
-        // throw new Error('Cannot log movie search: poster_path is missing.');
-        return; // Or throw an error
+        return;
     }
 
     const payload: LogSearchPayload = {
         tmdb_id: movieData.tmdb_id,
         title: movieData.title,
-        poster_url: `https://image.tmdb.org/t/p/w500${movieData.poster_path}`, // Construct full URL
+        poster_url: `https://image.tmdb.org/t/p/w500${movieData.poster_path}`,
         runtime_minutes: movieData.runtime_minutes,
         genres: movieData.genres
     };
 
     try {
-        const response = await fetch(`${BACKEND_BASE_URL}/api/searches`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                // Add any other headers like Authorization if your backend requires them
-            },
-            body: JSON.stringify(payload),
-        });
-
-
-        if (!response.ok) {
-            const errorData = await response.text();
-            // Log the error internally, but re-throw to allow the caller to potentially handle it (e.g., UI feedback)
-            console.error(`Backend error logging search: ${response.status}`, errorData);
-            throw new Error(`Failed to log movie search to backend: ${response.status} ${errorData}`);
-        }
-        // console.log('Movie search logged successfully to backend for TMDB ID:', movieData.tmdb_id);
+        const response = await apiClient.post('/api/searches', payload);
     } catch (error) {
-        // Log network errors or errors from the !response.ok block
-        console.error('Error in logMovieSearchToBackend:', error);
-        throw error; // Re-throw to allow caller to handle
+        console.error('Error in logMovieSearchToBackend (Axios):', error);
+        if (axios.isAxiosError(error) && error.response) {
+            throw new Error(`Failed to log movie search: ${error.response.status} ${JSON.stringify(error.response.data)}`);
+        }
+        throw error;
     }
 };
