@@ -1,7 +1,9 @@
-require('dotenv').config();
-const express = require('express');
-const { Pool } = require('pg');
-const cors = require('cors');
+import dotenv from 'dotenv';
+dotenv.config();
+import express from 'express';
+import pool from './config/db.js'; // Added .js extension
+import cors from 'cors';
+import authRoutes from './routes/authRoutes.js'; // Import auth routes
 
 const app = express();
 const port = process.env.PORT || 3001; // Use environment variable or default
@@ -10,23 +12,8 @@ const port = process.env.PORT || 3001; // Use environment variable or default
 app.use(cors()); // Enable CORS for all origins (adjust for production)
 app.use(express.json()); // Parse JSON request bodies
 
-// Database Connection Pool
-const pool = new Pool({
-  user: process.env.PG_USER,
-  host: process.env.PG_HOST,
-  database: process.env.PG_DATABASE,
-  password: process.env.PG_PASSWORD,
-  port: process.env.PG_PORT,
-});
-
-pool.on('connect', () => {
-  console.log('Connected to the database');
-});
-
-pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
-  process.exit(-1);
-});
+// Mount auth routes
+app.use('/api/auth', authRoutes);
 
 // --- API Routes ---
 
@@ -40,8 +27,9 @@ app.post('/api/searches', async (req, res, next) => {
     return res.status(400).json({ error: 'Missing or invalid movie data in request body' });
   }
 
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     await client.query('BEGIN'); // Start transaction
 
     // 1. Upsert movie information
@@ -63,18 +51,19 @@ app.post('/api/searches', async (req, res, next) => {
     res.status(201).send('Search event logged successfully');
 
   } catch (error) {
-    await client.query('ROLLBACK'); // Rollback transaction on error
+    if (client) await client.query('ROLLBACK'); // Rollback transaction on error
     console.error('Error logging search event:', error);
     next(error); // Pass error to the error handling middleware
   } finally {
-    client.release(); // Release the client back to the pool
+    if (client) client.release(); // Release the client back to the pool
   }
 });
 
 // GET /api/movies/trending - Get top 10 trending movies (last 7 days)
 app.get('/api/movies/trending', async (req, res, next) => {
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     const trendingQuery = `
       SELECT
           m.tmdb_id,
@@ -94,13 +83,12 @@ app.get('/api/movies/trending', async (req, res, next) => {
       LIMIT 10;
     `;
     const result = await client.query(trendingQuery);
-    console.log(result.rows);
     res.status(200).json(result.rows);
   } catch (error) {
     console.error('Error fetching trending movies:', error);
     next(error); // Pass error to the error handling middleware
   } finally {
-    client.release(); // Release the client back to the pool
+    if (client) client.release(); // Release the client back to the pool
   }
 });
 
@@ -109,9 +97,9 @@ app.post('/api/admin/cleanup', async (req, res, next) => {
   // Default to deleting search events older than 14 days.
   // The cron job can override this by sending a 'daysOld' query parameter.
   const daysOldThreshold = 14;
-
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     await client.query('BEGIN'); // Start transaction
 
     // 1. Delete search events older than the specified threshold
@@ -130,11 +118,11 @@ app.post('/api/admin/cleanup', async (req, res, next) => {
     });
 
   } catch (error) {
-    await client.query('ROLLBACK'); // Rollback transaction on error
+    if (client) await client.query('ROLLBACK'); // Rollback transaction on error
     console.error('Error during data cleanup:', error);
     next(error); // Pass error to the general error handler
   } finally {
-    client.release(); // Release the client back to the pool
+    if (client) client.release(); // Release the client back to the pool
   }
 });
 
