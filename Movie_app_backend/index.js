@@ -5,6 +5,7 @@ import pool from './config/db.js'; // Added .js extension
 import cors from 'cors';
 import authRoutes from './routes/authRoutes.js'; // Import auth routes
 import watchedMovieRoutes from './routes/watchedMovieRoutes.js'; // Import watched movie routes
+import profileStatsRoutes from './routes/profileStatsRoutes.js'; // Import profile stats routes
 
 const app = express();
 const port = process.env.PORT || 3001; // Use environment variable or default
@@ -18,6 +19,9 @@ app.use('/api/auth', authRoutes);
 
 // Mount watched movie routes
 app.use('/api/watched', watchedMovieRoutes);
+
+// Mount profile stats routes
+app.use('/api/profile', profileStatsRoutes);
 
 // --- API Routes ---
 
