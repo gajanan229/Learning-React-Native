@@ -9,6 +9,7 @@ import MovieCard from "@/components/MovieCard";
 import {getTrendingMovies} from "@/services/appwrite";
 import TrendingCard from "@/components/TrendingCard";
 import { fetchTrendingMoviesFromBackend } from "@/services/api";
+import React from "react";
 
 
 export default function Index() {

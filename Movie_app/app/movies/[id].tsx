@@ -1,10 +1,12 @@
 import {Image, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet} from 'react-native'
-import React, {useEffect, useState} from 'react'
-import {useLocalSearchParams, useRouter } from "expo-router";
+import React, {useEffect, useState, useCallback} from 'react'
+import {useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import useFetch from "@/services/useFetch";
 import {fetchMovieDetails} from "@/services/api";
 import { icons } from "@/constants/icons";
 import {SafeAreaView} from "react-native-safe-area-context";
+import { getWatchedMovieStatusAPI, WatchedMoviePayload } from '@/services/watchedMovieService';
+import { useAuth } from '@/context/AuthContext';
 
 interface MovieInfoProps {
     label: string;
@@ -27,9 +29,9 @@ const MovieDetails = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Placeholder state for watched status - to be implemented fully later
-    const [watchedEntry, setWatchedEntry] = useState<any | null>(null); 
-    // const [isFetchingWatchedStatus, setIsFetchingWatchedStatus] = useState(false);
+    const { isAuthenticated } = useAuth();
+    const [watchedEntry, setWatchedEntry] = useState<WatchedMoviePayload | null>(null);
+    const [isWatchedStatusLoading, setIsWatchedStatusLoading] = useState(true);
 
     useEffect(() => {
         if (id) {
@@ -38,8 +40,6 @@ const MovieDetails = () => {
                 .then(data => {
                     setMovie(data);
                     setError(null);
-                    // TODO: Fetch watched status here in a subsequent step
-                    // Example: fetchWatchedMovieStatusAPI(data.id).then(setWatchedEntry).catch(...);
                 })
                 .catch(err => {
                     console.error("Failed to fetch movie details:", err);
@@ -53,18 +53,43 @@ const MovieDetails = () => {
         }
     }, [id]);
 
+    useFocusEffect(
+        useCallback(() => {
+            const fetchStatus = async () => {
+                if (isAuthenticated && id) {
+                    setIsWatchedStatusLoading(true);
+                    try {
+                        const status = await getWatchedMovieStatusAPI(id as string);
+                        setWatchedEntry(status);
+                    } catch (error) {
+                        if ((error as any)?.response?.status !== 404) {
+                            console.error("Failed to fetch watched status", error);
+                        }
+                        setWatchedEntry(null);
+                    } finally {
+                        setIsWatchedStatusLoading(false);
+                    }
+                } else {
+                    setIsWatchedStatusLoading(false);
+                    setWatchedEntry(null);
+                }
+            };
+            fetchStatus();
+        }, [id, isAuthenticated])
+    );
+
     const handleRateReviewPress = () => {
         if (!movie) return;
 
         router.push({
-            pathname: '/(modals)/rateMovie' as any, // Added 'as any' for potential TS path issue
+            pathname: '/(modals)/rateMovie' as any,
             params: {
                 movieId: movie.id.toString(),
                 movieTitle: movie.title,
                 moviePosterPath: movie.poster_path,
-                movieRuntime: movie.runtime?.toString() || null, // Ensure it's a string or null
+                movieRuntime: movie.runtime?.toString() || null,
                 movieGenres: JSON.stringify(movie.genres?.map(g => g.name) || []),
-                initialWatchedEntry: JSON.stringify(watchedEntry), // Pass current watchedEntry (null for now)
+                initialWatchedEntry: JSON.stringify(watchedEntry),
             }
         });
     };
@@ -79,9 +104,21 @@ const MovieDetails = () => {
         return <SafeAreaView className="flex-1 bg-primary justify-center items-center"><Text className="text-white text-lg">Movie not found.</Text></SafeAreaView>;
     }
 
-    // Determine button icon (simplified for now)
-    const WatchlistIcon = watchedEntry ? icons.checkmarkFilled : icons.checkmarkOutline; // Example icons
-    const iconColor = watchedEntry ? '#22C55E' : '#9CA3AF'; // Green if watched, Gray if not
+    // Determine button icon
+    let WatchlistIcon = icons.save; // Default to save icon (placeholder for plus)
+    let iconColor = '#9CA3AF'; // Default to gray
+
+    if (isWatchedStatusLoading) {
+        // Optionally, you could use a spinner icon here or disable the button
+        // For now, let's keep it simple and just use the default, or a specific loading indicator
+        // WatchlistIcon = icons.loading; // Assuming you have a loading icon
+    } else if (watchedEntry) {
+        WatchlistIcon = icons.checkmarkFilled ; 
+        iconColor = '#22C55E'; // Green
+    } else {
+        WatchlistIcon = icons.checkmarkOutline; 
+        iconColor = '#9CA3AF'; // Gray
+    }
 
     return (
         <View className="bg-primary flex-1">
@@ -106,8 +143,16 @@ const MovieDetails = () => {
                 <View className="flex-col items-start justify-center mt-5 px-5">
                 <View className="flex-row justify-between items-center">
                             <Text className="text-white text-2xl font-bold w-[80%]" numberOfLines={2}>{movie.title}</Text>
-                            <TouchableOpacity onPress={handleRateReviewPress} className="p-2 bg-black/30 rounded-full">
-                                <Image source={WatchlistIcon} className="w-6 h-6" style={{tintColor: iconColor}} />
+                            <TouchableOpacity 
+                                onPress={handleRateReviewPress} 
+                                className="p-2 bg-black/30 rounded-full"
+                                disabled={isWatchedStatusLoading}
+                            >
+                                {isWatchedStatusLoading ? (
+                                    <ActivityIndicator size="small" color="#FFFFFF" />
+                                ) : (
+                                    <Image source={WatchlistIcon} className="w-6 h-6" style={{tintColor: iconColor}} />
+                                )}
                             </TouchableOpacity>
                         </View>
                     <View className="flex-row items-center gap-x-1 mt-2">

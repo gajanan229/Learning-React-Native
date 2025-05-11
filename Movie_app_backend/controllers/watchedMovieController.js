@@ -36,7 +36,9 @@ export const addOrUpdateWatchedMovie = async (req, res, next) => {
         const result = await upsertWatchedMovie(userId, movieData);
         // Check if the record was updated or created by comparing created_at and updated_at
         // This is a heuristic; a more robust way might be to check if a previous record existed.
-        if (result.created_at.getTime() === result.updated_at.getTime() && Math.abs(new Date(result.created_at).getTime() - Date.now()) < 2000) {
+        if (result.created_at && result.updated_at && 
+            result.created_at.getTime() === result.updated_at.getTime() && 
+            Math.abs(new Date(result.created_at).getTime() - Date.now()) < 2000) {
             // If created_at and updated_at are very close to each other and to now, assume it was just created.
              res.status(201).json(result);
         } else {

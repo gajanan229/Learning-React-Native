@@ -50,7 +50,7 @@ export const upsertWatchedMovie = async (userId, movieData) => {
         await client.query(upsertMovieQuery, [
             movie_tmdb_id,
             title,
-            poster_url,
+            `https://image.tmdb.org/t/p/w500/${poster_url}`,
             runtime_minutes, 
             genres
         ]);
