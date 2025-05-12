@@ -6,6 +6,7 @@ import cors from 'cors';
 import authRoutes from './routes/authRoutes.js'; // Import auth routes
 import watchedMovieRoutes from './routes/watchedMovieRoutes.js'; // Import watched movie routes
 import profileStatsRoutes from './routes/profileStatsRoutes.js'; // Import profile stats routes
+import listRoutes from './routes/listRoutes.js'; // Import list routes
 
 const app = express();
 const port = process.env.PORT || 3001; // Use environment variable or default
@@ -22,6 +23,9 @@ app.use('/api/watched', watchedMovieRoutes);
 
 // Mount profile stats routes
 app.use('/api/profile', profileStatsRoutes);
+
+// Mount list routes
+app.use('/api/lists', listRoutes);
 
 // --- API Routes ---
 

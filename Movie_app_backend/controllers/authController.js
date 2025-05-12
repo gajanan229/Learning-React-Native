@@ -2,6 +2,7 @@ import {
     createUser,
     findUserByEmail
 } from '../models/userModel.js';
+import { createList } from '../models/listModel.js';
 import {
     hashPassword,
     comparePassword
@@ -32,6 +33,28 @@ export const register = async (req, res, next) => {
         // 4. Create user
         // Ensure username is passed correctly, even if it's optional and might be null/undefined
         const newUser = await createUser({ email, passwordHash, username: username || null });
+
+        // ---> Add this section: Create Default Lists <---
+        try {
+            // Create default Watchlist
+            await createList(newUser.id, { 
+                list_name: 'Watchlist', 
+                list_type: 'watchlist', 
+                description: 'Movies you plan to watch.' 
+            });
+            // Create default Favorites
+            await createList(newUser.id, { 
+                list_name: 'Favorites', 
+                list_type: 'favorites', 
+                description: 'Your all-time favorite movies.' 
+            });
+            console.log(`Default lists created successfully for user ${newUser.id}`);
+        } catch (listError) {
+            // Log the error but do not fail the registration process
+            console.error(`Failed to create default lists for user ${newUser.id}:`, listError);
+            // Do not throw or call next() - registration should still succeed
+        }
+        // ---> End of added section <---
 
         // 5. Generate token
         const token = generateToken(newUser.id);

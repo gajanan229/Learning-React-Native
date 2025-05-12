@@ -15,6 +15,7 @@ export interface AuthResponse {
 }
 
 export const loginUserAPI = async (email: string, password: string): Promise<AuthResponse> => {
+    console.log(BACKEND_BASE_URL);
     const response = await fetch(`${BACKEND_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
