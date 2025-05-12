@@ -9,9 +9,9 @@ import StatCard from '../../components/profile/StatCard';
 import PeriodStatDisplay from '../../components/profile/PeriodStatDisplay';
 import GenreStatItem from '../../components/profile/GenreStatItem';
 import MovieListShort from '../../components/profile/MovieListShort';
-import MonthlyActivityChart from '../../components/profile/MonthlyActivityChart';
 import RatingDistributionChart from '../../components/profile/RatingDistributionChart';
 import { themeColors } from '../../constants/theme';
+import SwipeableChartContainer from '../../components/profile/SwipeableChartContainer';
 
 export default function ProfileScreen() {
     const { logout, currentUser, isAuthenticated, isLoading: isAuthLoading } = useAuth();
@@ -162,27 +162,15 @@ export default function ProfileScreen() {
                                     />
                                 ) : <Text className="text-gray-500 p-2 text-sm">No data for this year.</Text>}
 
-                                {/* Monthly Activity List -> Chart */}
-                                <Text className="text-white text-lg font-semibold mt-4 mb-2 px-1">Monthly Breakdown</Text>
-                                {statsData.timeBasedStats.byMonth && statsData.timeBasedStats.byMonth.length > 0 ? (
-                                    <View>
-                                        <MonthlyActivityChart
-                                            data={statsData.timeBasedStats.byMonth}
-                                            dataType="movies"
-                                            chartTitle="Movies Watched Per Month"
-                                        />
-                                        <View className="mt-6">
-                                            <MonthlyActivityChart
-                                                data={statsData.timeBasedStats.byMonth}
-                                                dataType="hours"
-                                                chartTitle="Hours Watched Per Month"
-                                                barColorHex={themeColors.light[200]}
-                                            />
-                                        </View>
-                                    </View>
+                                {/* Monthly Activity Swipeable Charts */}
+                                <Text className="text-white text-lg font-semibold mt-6 mb-2 px-1">Monthly Breakdown</Text>
+                                {statsData.timeBasedStats.byMonth /* && statsData.timeBasedStats.byMonth.length > 0  <-- SwipeableChartContainer handles null/undefined data internally */ ? (
+                                    <SwipeableChartContainer
+                                        monthlyActivityData={statsData.timeBasedStats.byMonth}
+                                    />
                                 ) : (
-                                    <View className="bg-gray-800 p-3 rounded-md mb-2 mx-1 items-center">
-                                        <Text className="text-gray-400">No monthly activity data available.</Text>
+                                    <View className="bg-gray-800 p-3 rounded-md mb-2 mx-1 items-center min-h-[100px] justify-center">
+                                        <Text className="text-gray-400 text-center">No monthly activity data available to display charts.</Text>
                                     </View>
                                 )}
                                 {/* Placeholder for Most Active Periods if data exists */}
@@ -311,7 +299,7 @@ export default function ProfileScreen() {
                     >
                         <Text className="text-white text-lg font-semibold">Logout</Text>
                     </TouchableOpacity>
-            </View>
+                </View>
             </ScrollView>
         </SafeAreaView>
     );

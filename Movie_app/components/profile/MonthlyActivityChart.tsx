@@ -8,6 +8,7 @@ interface MonthlyActivityChartProps {
   dataType: 'movies' | 'hours';
   chartTitle: string;
   barColorHex?: string;
+  containerWidth: number;
 }
 
 const MonthlyActivityChart: React.FC<MonthlyActivityChartProps> = (props) => {
@@ -66,23 +67,21 @@ const MonthlyActivityChart: React.FC<MonthlyActivityChartProps> = (props) => {
     // barRadius: 4, // Optional: for rounded bar tops, might need to check compatibility or implement custom path
   };
 
-  const screenWidth = Dimensions.get('window').width;
-
   return (
     <View style={styles.container} className="my-3">
-      <Text className="text-textLight text-lg font-semibold mb-3 ml-2">{props.chartTitle}</Text>
+      <Text className="text-gray-300 text-lg font-semibold mb-3 ml-2">{props.chartTitle}</Text>
       <BarChart
         data={chartKitData}
-        width={screenWidth - 32} // 16px padding on each side
+        width={props.containerWidth}
         height={230}
-        yAxisLabel={props.dataType === 'movies' ? "" : ""} // No specific prefix for movies, hours handled by suffix
+        yAxisLabel={props.dataType === 'movies' ? "" : ""}
         yAxisSuffix={props.dataType === 'hours' ? "h" : ""}
         chartConfig={chartConfig}
         fromZero={true}
         showValuesOnTopOfBars={true}
         withHorizontalLabels={true}
-        withInnerLines={true} // Horizontal grid lines
-        verticalLabelRotation={props.data.length > 7 ? 30 : (props.data.length > 4 ? 15 : 0)} // Dynamic rotation
+        withInnerLines={true}
+        verticalLabelRotation={props.data.length > 7 ? 30 : (props.data.length > 4 ? 15 : 0)}
         style={styles.chartStyle}
       />
     </View>

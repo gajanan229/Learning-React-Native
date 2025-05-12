@@ -82,7 +82,7 @@ const RatingDistributionChart: React.FC<RatingDistributionChartProps> = (props) 
 
   return (
     <View style={styles.container} className="my-3">
-      <Text className="text-textLight text-lg font-semibold mb-3 ml-2">{props.chartTitle}</Text>
+      <Text className="text-gray-300 text-lg font-semibold mb-3 ml-2">{props.chartTitle}</Text>
       <BarChart
         data={chartKitData}
         width={screenWidth - 32} // 16px padding on each side
