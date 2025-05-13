@@ -2,6 +2,7 @@ import {Image, StyleSheet, Text, TouchableOpacity, View} from 'react-native'
 import React from 'react'
 import {Link} from "expo-router";
 import {icons} from "@/constants/icons";
+import type { Movie } from '../interfaces/listTypes';
 
 const MovieCard = ({id, poster_path, title, vote_average, release_date}: Movie) => {
     return (
@@ -20,7 +21,7 @@ const MovieCard = ({id, poster_path, title, vote_average, release_date}: Movie) 
 
                 <View className="flex-row items-center justify-start gap-x-1">
                     <Image source={icons.star} className="size-4" />
-                    <Text className="text-white text-sm font-bold uppercase">{Math.round(vote_average/2)}</Text>
+                    <Text className="text-white text-sm font-bold uppercase">{Math.round((vote_average ?? 0)/2)}</Text>
                 </View>
 
                 <View className="flex-row items-center justify-between">

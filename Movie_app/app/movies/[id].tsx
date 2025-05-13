@@ -1,7 +1,6 @@
 import {Image, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet} from 'react-native'
 import React, {useEffect, useState, useCallback} from 'react'
 import {useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
-import useFetch from "@/services/useFetch";
 import {fetchMovieDetails} from "@/services/api";
 import { icons } from "@/constants/icons";
 import {SafeAreaView} from "react-native-safe-area-context";
@@ -82,14 +81,28 @@ const MovieDetails = () => {
         if (!movie) return;
 
         router.push({
-            pathname: '/(modals)/rateMovie' as any,
+            pathname: '/(modals)/rateMovie',
             params: {
                 movieId: movie.id.toString(),
                 movieTitle: movie.title,
                 moviePosterPath: movie.poster_path,
-                movieRuntime: movie.runtime?.toString() || null,
+                movieRuntime: movie.runtime?.toString() || '',
                 movieGenres: JSON.stringify(movie.genres?.map(g => g.name) || []),
                 initialWatchedEntry: JSON.stringify(watchedEntry),
+            }
+        });
+    };
+
+    const handleAddToListPress = () => {
+        if (!movie) return;
+        router.push({
+            pathname: '/(modals)/addToListModal',
+            params: {
+                movieId: movie.id.toString(),
+                movieTitle: movie.title,
+                moviePosterPath: movie.poster_path || '',
+                movieRuntime: movie.runtime?.toString() || '',
+                movieGenres: JSON.stringify(movie.genres?.map(g => g.name) || []),
             }
         });
     };
@@ -104,21 +117,22 @@ const MovieDetails = () => {
         return <SafeAreaView className="flex-1 bg-primary justify-center items-center"><Text className="text-white text-lg">Movie not found.</Text></SafeAreaView>;
     }
 
-    // Determine button icon
-    let WatchlistIcon = icons.save; // Default to save icon (placeholder for plus)
-    let iconColor = '#9CA3AF'; // Default to gray
+    // Determine button icon for Rate/Review
+    let rateReviewIcon = icons.save; // Default to save icon (placeholder for plus)
+    let rateReviewIconColor = '#9CA3AF'; // Default to gray
 
     if (isWatchedStatusLoading) {
-        // Optionally, you could use a spinner icon here or disable the button
-        // For now, let's keep it simple and just use the default, or a specific loading indicator
-        // WatchlistIcon = icons.loading; // Assuming you have a loading icon
+        // Placeholder, loading state handled by ActivityIndicator below
     } else if (watchedEntry) {
-        WatchlistIcon = icons.checkmarkFilled ; 
-        iconColor = '#22C55E'; // Green
+        rateReviewIcon = icons.checkmarkFilled ;
+        rateReviewIconColor = '#22C55E'; // Green
     } else {
-        WatchlistIcon = icons.checkmarkOutline; 
-        iconColor = '#9CA3AF'; // Gray
+        rateReviewIcon = icons.checkmarkOutline;
+        rateReviewIconColor = '#9CA3AF'; // Gray
     }
+
+    // Icon for "Add to List" - assuming you have icons.list
+    const addToListIconSource = icons.list || icons.save; // Fallback to save icon if list icon is missing
 
     return (
         <View className="bg-primary flex-1">
@@ -141,20 +155,31 @@ const MovieDetails = () => {
                     {/*</TouchableOpacity>*/}
                 </View>
                 <View className="flex-col items-start justify-center mt-5 px-5">
-                <View className="flex-row justify-between items-center">
-                            <Text className="text-white text-2xl font-bold w-[80%]" numberOfLines={2}>{movie.title}</Text>
-                            <TouchableOpacity 
-                                onPress={handleRateReviewPress} 
-                                className="p-2 bg-black/30 rounded-full"
+                    <View className="flex-row justify-between items-center w-full">
+                        <Text className="text-white text-2xl font-bold flex-1 mr-2" numberOfLines={2}>{movie.title}</Text>
+                        <View className="flex-row items-center"> {/* Container for the two buttons */}
+                            {/* Existing Rate/Review Button */}
+                            <TouchableOpacity
+                                onPress={handleRateReviewPress}
+                                className="p-2 bg-black/30 rounded-full" // Removed mr-2, will add ml-2 to the next one
                                 disabled={isWatchedStatusLoading}
                             >
                                 {isWatchedStatusLoading ? (
                                     <ActivityIndicator size="small" color="#FFFFFF" />
                                 ) : (
-                                    <Image source={WatchlistIcon} className="w-6 h-6" style={{tintColor: iconColor}} />
+                                    <Image source={rateReviewIcon} className="w-6 h-6" style={{tintColor: rateReviewIconColor}} />
                                 )}
                             </TouchableOpacity>
+
+                            {/* ---> New "Add to List" Button <--- */}
+                            <TouchableOpacity
+                                onPress={handleAddToListPress}
+                                className="p-2 bg-black/30 rounded-full ml-2" // Added ml-2 for spacing
+                            >
+                                <Image source={addToListIconSource} className="w-6 h-6" style={{tintColor: '#9CA3AF'}} /> {/* Default gray tint */}
+                            </TouchableOpacity>
                         </View>
+                    </View>
                     <View className="flex-row items-center gap-x-1 mt-2">
                         <Text className="text-light-200 text-sm">
                             {movie?.release_date?.split("-")[0]} •

@@ -8,6 +8,8 @@ export default function ModalLayout() {
             headerShown: false 
         }}>
             <Stack.Screen name="rateMovie" />
+            <Stack.Screen name="createListModal" />
+            <Stack.Screen name="addToListModal" options={{ title: "Add to List" }} />
             {/* Add other modal screens here if you create more */}
         </Stack>
     );

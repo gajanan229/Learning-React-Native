@@ -1,3 +1,4 @@
+import React from 'react';
 import {Image, StyleSheet, Text, View, FlatList, ActivityIndicator} from 'react-native'
 import {images} from "@/constants/images";
 import MovieCard from "@/components/MovieCard";

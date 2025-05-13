@@ -8,6 +8,7 @@ import play from "@/assets/icons/play.png";
 import arrow from "@/assets/icons/arrow.png";
 import checkmarkFilled from "@/assets/icons/checkmarkFilled.png";
 import checkmarkOutline from "@/assets/icons/checkmarkOutline.png";
+import list from "@/assets/icons/list.png";
 
 export const icons = {
   home,
@@ -20,4 +21,5 @@ export const icons = {
   arrow,
   checkmarkFilled,
   checkmarkOutline,
+  list,
 };
