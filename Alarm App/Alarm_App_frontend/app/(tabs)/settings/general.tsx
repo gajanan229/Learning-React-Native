@@ -6,10 +6,12 @@ import ToggleSwitch from '../../../components/ui/ToggleSwitch';
 import useSettingsStore from '../../../store/useSettingsStore';
 import useSoundStore from '../../../store/useSoundStore';
 import SoundPicker from '../../../components/alarm/SoundPicker';
+import { useAuthStore } from '../../../store/useAuthStore';
 
 export default function GeneralSettings() {
   const { settings, updateSettings, fetchSettings } = useSettingsStore();
   const { getSoundById } = useSoundStore();
+  const { logout } = useAuthStore(state => ({ logout: state.logout }));
   
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [isSoundPickerVisible, setIsSoundPickerVisible] = useState(false);
@@ -47,6 +49,12 @@ export default function GeneralSettings() {
   
   // Get selected sound name
   const selectedSound = getSoundById(settings.defaultSoundId);
+  
+  // Handle logout
+  const handleLogout = async () => {
+    await logout();
+    // Navigation to login screen will be handled by RootLayout's conditional rendering
+  };
   
   return (
     <ScrollView style={styles.container}>
@@ -163,6 +171,18 @@ export default function GeneralSettings() {
         </View>
       </View>
       
+      {/* Account Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Account</Text>
+        <TouchableOpacity
+          style={[styles.settingRow, styles.logoutButton]}
+          onPress={handleLogout}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.settingLabel, styles.logoutButtonText]}>Logout</Text>
+        </TouchableOpacity>
+      </View>
+      
       {/* Sound Picker Modal */}
       <SoundPicker
         visible={isSoundPickerVisible}
@@ -249,7 +269,7 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: colors.accent.primary,
+    backgroundColor: colors.interactive.secondary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -261,18 +281,29 @@ const styles = StyleSheet.create({
   durationText: {
     fontFamily: typography.fontFamily.medium,
     fontSize: typography.fontSize.md,
-    color: colors.text.secondary,
+    color: colors.text.primary,
     marginHorizontal: spacing.md,
   },
   permissionButton: {
     backgroundColor: colors.accent.primary,
     paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderRadius: 4,
+    paddingHorizontal: spacing.sm,
+    borderRadius: 6,
   },
   permissionButtonText: {
     fontFamily: typography.fontFamily.medium,
     fontSize: typography.fontSize.sm,
     color: colors.text.primary,
+  },
+  logoutButton: {
+    borderBottomWidth: 0,
+    backgroundColor: colors.accent.destructive,
+    borderRadius: 8,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  logoutButtonText: {
+    color: colors.text.primary,
+    fontFamily: typography.fontFamily.bold,
   },
 });

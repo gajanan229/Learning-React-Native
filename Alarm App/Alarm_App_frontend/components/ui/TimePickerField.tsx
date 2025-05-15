@@ -24,8 +24,8 @@ const TimePickerField: React.FC<TimePickerFieldProps> = ({
     if (value) {
       const [hours, minutes] = value.split(':').map(Number);
       if (!isNaN(hours) && !isNaN(minutes)) {
-        date.setHours(hours);
-        date.setMinutes(minutes);
+      date.setHours(hours);
+      date.setMinutes(minutes);
       } else {
         // Default to current time if value is invalid
         console.warn(`Invalid time value provided to TimePickerField: ${value}`);
@@ -54,8 +54,8 @@ const TimePickerField: React.FC<TimePickerFieldProps> = ({
     if (!value) return 'Select Time';
     
     try {
-      const date = getTimeAsDate();
-      return format(date, 'h:mm a');
+    const date = getTimeAsDate();
+    return format(date, 'h:mm a');
     } catch (error) {
       console.warn(`Error formatting time: ${value}`, error);
       return 'Invalid Time';
