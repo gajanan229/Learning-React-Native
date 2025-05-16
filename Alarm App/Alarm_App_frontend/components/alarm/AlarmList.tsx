@@ -1,5 +1,5 @@
 import React from 'react';
-import { FlatList, Text, View, StyleSheet } from 'react-native';
+import { FlatList, Text, View, StyleSheet, ActivityIndicator } from 'react-native';
 import { Alarm } from '../../types';
 import { colors, typography, spacing } from '../../constants/theme';
 import AlarmItem from './AlarmItem';
@@ -10,6 +10,10 @@ interface AlarmListProps {
   onAlarmPress: (alarm: Alarm) => void;
   onAlarmToggle: (alarmId: string) => void;
   onAlarmDelete: (alarmId: string) => void;
+  actionInProgress?: {
+    id: string | null;
+    action: 'toggle' | 'delete' | null;
+  };
 }
 
 const AlarmList: React.FC<AlarmListProps> = ({
@@ -17,6 +21,7 @@ const AlarmList: React.FC<AlarmListProps> = ({
   onAlarmPress,
   onAlarmToggle,
   onAlarmDelete,
+  actionInProgress = { id: null, action: null },
 }) => {
   // Sort alarms by time
   const sortedAlarms = [...alarms].sort((a, b) => {
@@ -38,18 +43,41 @@ const AlarmList: React.FC<AlarmListProps> = ({
   );
 
   // Render an alarm item
-  const renderAlarm = ({ item }: { item: Alarm }) => (
-    <SwipeableRow
-      onDelete={() => onAlarmDelete(item.id)}
-      onPress={() => onAlarmPress(item)}
-    >
+  const renderAlarm = ({ item }: { item: Alarm }) => {
+    const isActionInProgress = actionInProgress.id === item.id;
+    
+    // Wrap AlarmItem with a loading overlay when being acted upon
+    const renderAlarmWithLoadingState = () => (
       <AlarmItem
         alarm={item}
         onPress={() => onAlarmPress(item)}
         onToggle={() => onAlarmToggle(item.id)}
+        disabled={isActionInProgress}
       />
-    </SwipeableRow>
-  );
+    );
+    
+    // If this alarm has an action in progress, render with loading indicator
+    if (isActionInProgress) {
+      return (
+        <View style={styles.actionInProgressContainer}>
+          {renderAlarmWithLoadingState()}
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="small" color={colors.accent.primary} />
+          </View>
+        </View>
+      );
+    }
+    
+    // Normal rendering with swipeable row
+    return (
+      <SwipeableRow
+        onDelete={() => onAlarmDelete(item.id)}
+        onPress={() => onAlarmPress(item)}
+      >
+        {renderAlarmWithLoadingState()}
+      </SwipeableRow>
+    );
+  };
 
   return (
     <FlatList
@@ -83,6 +111,20 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.md,
     color: colors.text.secondary,
   },
+  actionInProgressContainer: {
+    position: 'relative',
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+  }
 });
 
 export default AlarmList;

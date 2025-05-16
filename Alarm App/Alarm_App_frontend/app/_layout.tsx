@@ -71,7 +71,7 @@ export default function RootLayout() {
     // Hide splash screen AFTER navigation decision is made and likely initiated
     SplashScreen.hideAsync().catch((error) => {
       console.warn('SplashScreen.hideAsync error:', error);
-    });
+      });
 
   }, [fontsLoaded, fontError, appCoreServicesReady, isAuthLoading, isAuthenticated, router]);
 
@@ -88,9 +88,9 @@ export default function RootLayout() {
       <StatusBar style="light" />
       <Stack
         screenOptions={{ 
-          headerShown: false,
+        headerShown: false,
           contentStyle: { backgroundColor: colors.background.primary }, // Use theme color
-          animation: 'slide_from_right',
+        animation: 'slide_from_right',
         }}
       >
         {/* Define available route groups. Expo Router handles rendering based on URL. */}

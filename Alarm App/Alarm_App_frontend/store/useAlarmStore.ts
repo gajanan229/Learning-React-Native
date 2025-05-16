@@ -1,6 +1,8 @@
 import { create } from 'zustand';
-import { Alarm, Folder } from '../types';
-import { alarmStorage, folderStorage } from '../utils/storage';
+import { Alarm, Folder, Day } from '../types';
+import { alarmStorage } from '../utils/storage';
+import * as folderService from '../services/folderService';
+import * as alarmService from '../services/alarmService';
 import {
   scheduleAlarm,
   cancelAlarm,
@@ -8,29 +10,56 @@ import {
   snoozeAlarm
 } from '../utils/notifications';
 
+// Alias for clarity and mapping between backend and frontend types
+type StoreAlarm = Alarm; // Frontend uses camelCase properties
+type BackendAlarm = alarmService.Alarm; // Backend uses snake_case properties
+type CreateAlarmPayload = alarmService.CreateAlarmPayload;
+type UpdateAlarmPayload = alarmService.UpdateAlarmPayload;
+
+// Helper function to convert backend alarm to store alarm format
+const mapBackendAlarmToStoreAlarm = (backendAlarm: BackendAlarm): StoreAlarm => {
+  return {
+    id: String(backendAlarm.id),
+    folderId: String(backendAlarm.folder_id),
+    time: backendAlarm.time,
+    label: backendAlarm.label || '',
+    soundId: backendAlarm.sound_id,
+    vibration: backendAlarm.vibration,
+    snooze: backendAlarm.snooze,
+    snoozeDuration: backendAlarm.snooze_duration,
+    isTemporary: backendAlarm.is_temporary,
+    isActive: backendAlarm.is_active,
+    createdAt: new Date(backendAlarm.created_at).getTime(),
+    updatedAt: new Date(backendAlarm.updated_at).getTime(),
+  };
+};
+
 interface AlarmState {
-  alarms: Alarm[];
+  alarms: StoreAlarm[];
   folders: Folder[];
-  isLoading: boolean;
+  isLoadingFolders: boolean;
+  isLoadingAlarms: boolean;
+  errorFolders: string | null;
+  errorAlarms: string | null;
   activeAlarms: number;
   
   // Actions
-  fetchAlarms: () => Promise<void>;
+  fetchAlarmsForFolder: (folderId: string | number) => Promise<void>;
   fetchFolders: () => Promise<void>;
   
   // Folder operations
-  addFolder: (folder: Omit<Folder, 'id' | 'createdAt' | 'updatedAt'>) => Promise<string>;
-  updateFolder: (folder: Folder) => Promise<void>;
-  deleteFolder: (folderId: string) => Promise<void>;
-  toggleFolderActive: (folderId: string) => Promise<void>;
+  addFolder: (folderData: { name: string, recurrenceDays?: Day[], isActive?: boolean }) => Promise<Folder | void>;
+  updateFolder: (folderId: string | number, updates: Partial<Omit<Folder, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>) => Promise<Folder | void>;
+  deleteFolder: (folderId: string | number) => Promise<void>;
+  toggleFolderActive: (folderId: string | number) => Promise<void>;
   getActiveAlarmCountByFolder: (folderId: string) => number;
   
   // Alarm operations
-  addAlarm: (alarm: Omit<Alarm, 'id' | 'createdAt' | 'updatedAt'>) => Promise<string>;
-  updateAlarm: (alarm: Alarm) => Promise<void>;
-  deleteAlarm: (alarmId: string) => Promise<void>;
-  toggleAlarmActive: (alarmId: string) => Promise<void>;
-  getAlarmsByFolder: (folderId: string) => Alarm[];
+  createAlarm: (folderId: string | number, alarmData: CreateAlarmPayload) => Promise<StoreAlarm>;
+  updateExistingAlarm: (alarmId: string | number, updates: UpdateAlarmPayload) => Promise<StoreAlarm>;
+  deleteExistingAlarm: (alarmId: string | number, folderId: string | number) => Promise<void>;
+  toggleExistingAlarmActive: (alarmId: string | number, currentIsActive: boolean, folderId: string | number) => Promise<void>;
+  getAlarmsByFolder: (folderId: string) => StoreAlarm[];
   dismissTemporaryAlarm: (alarmId: string) => Promise<void>;
   snoozeAlarmById: (alarmId: string, duration: number) => Promise<void>;
 }
@@ -38,101 +67,132 @@ interface AlarmState {
 const useAlarmStore = create<AlarmState>((set, get) => ({
   alarms: [],
   folders: [],
-  isLoading: false,
+  isLoadingFolders: false,
+  isLoadingAlarms: false,
+  errorFolders: null,
+  errorAlarms: null,
   activeAlarms: 0,
   
-  // Fetch data from storage
-  fetchAlarms: async () => {
-    set({ isLoading: true });
-    const alarms = await alarmStorage.getAll();
-    set({
-      alarms,
-      isLoading: false,
-      activeAlarms: alarms.filter(a => a.isActive).length
-    });
+  // Fetch data
+  fetchAlarmsForFolder: async (folderId) => {
+    set({ isLoadingAlarms: true, errorAlarms: null });
+    try {
+      const fetchedAlarms = await alarmService.getAlarmsInFolderAPI(folderId);
+      const storeAlarms = fetchedAlarms.map(mapBackendAlarmToStoreAlarm);
+      
+      set({ 
+        alarms: storeAlarms, 
+        isLoadingAlarms: false, 
+        activeAlarms: storeAlarms.filter(a => a.isActive).length 
+      });
+    } catch (error) {
+      console.error(`Failed to fetch alarms for folder ${folderId}:`, error);
+      const message = error instanceof Error ? error.message : 'Failed to load alarms';
+      set({ errorAlarms: message, isLoadingAlarms: false });
+      throw error;
+    }
   },
   
   fetchFolders: async () => {
-    set({ isLoading: true });
-    const folders = await folderStorage.getAll();
-    set({ folders, isLoading: false });
+    set({ isLoadingFolders: true, errorFolders: null });
+    try {
+      const fetchedFolders = await folderService.getFoldersAPI();
+      set({ folders: fetchedFolders as unknown as Folder[], isLoadingFolders: false });
+    } catch (error) {
+      console.error("Failed to fetch folders:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load folders';
+      set({ errorFolders: errorMessage, isLoadingFolders: false });
+    }
   },
   
   // Folder operations
   addFolder: async (folderData) => {
-    const newFolder: Folder = {
-      id: Date.now().toString(),
-      ...folderData,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-    
-    const updatedFolders = [...get().folders, newFolder];
-    await folderStorage.saveAll(updatedFolders);
-    set({ folders: updatedFolders });
-    
-    return newFolder.id;
+    set({ isLoadingFolders: true, errorFolders: null });
+    try {
+      const apiPayload: any = {
+          name: folderData.name,
+          recurrenceDays: folderData.recurrenceDays || [],
+      };
+      if (folderData.isActive !== undefined) {
+        apiPayload.is_active = folderData.isActive;
+      }
+
+      const newFolderFromBackend = await folderService.createFolderAPI(apiPayload);
+      set(state => ({ folders: [...state.folders, newFolderFromBackend as unknown as Folder], isLoadingFolders: false }));
+      return newFolderFromBackend as unknown as Folder;
+    } catch (error) {
+      console.error("Failed to add folder:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create folder';
+      set({ errorFolders: errorMessage, isLoadingFolders: false });
+      throw error;
+    }
   },
   
-  updateFolder: async (updatedFolder) => {
-    const { folders, alarms } = get();
-    
-    // Update folder
-    const updatedFolders = folders.map(folder => 
-      folder.id === updatedFolder.id
-        ? { ...updatedFolder, updatedAt: Date.now() }
-        : folder
-    );
-    
-    await folderStorage.saveAll(updatedFolders);
-    set({ folders: updatedFolders });
-    
-    // Reschedule alarms if needed
-    const folderAlarms = alarms.filter(alarm => alarm.folderId === updatedFolder.id);
-    if (folderAlarms.length > 0) {
-      await rescheduleAllAlarms(alarms, updatedFolders);
+  updateFolder: async (folderId, updates) => {
+    set({ isLoadingFolders: true, errorFolders: null });
+    try {
+      const apiPayload: any = {};
+      if (updates.name !== undefined) apiPayload.name = updates.name;
+      if (updates.recurrence_days !== undefined) apiPayload.recurrenceDays = updates.recurrence_days;
+      if (updates.is_active !== undefined) apiPayload.is_active = updates.is_active;
+      
+      const updatedFolderFromBackend = await folderService.updateFolderAPI(folderId, apiPayload);
+      set(state => ({
+        folders: state.folders.map(f => f.id === folderId ? (updatedFolderFromBackend as unknown as Folder) : f),
+        isLoadingFolders: false
+      }));
+      
+      const { alarms } = get();
+      const currentFoldersState = get().folders;
+      const folderAlarms = alarms.filter(alarm => alarm.folderId === folderId);
+      if (folderAlarms.length > 0) {
+        await rescheduleAllAlarms(alarms, currentFoldersState);
+      }
+      return updatedFolderFromBackend as unknown as Folder;
+    } catch (error) {
+      console.error("Failed to update folder:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update folder';
+      set({ errorFolders: errorMessage, isLoadingFolders: false });
+      throw error;
     }
   },
   
   deleteFolder: async (folderId) => {
-    const { folders, alarms } = get();
-    
-    // Delete folder
-    const updatedFolders = folders.filter(folder => folder.id !== folderId);
-    await folderStorage.saveAll(updatedFolders);
-    
-    // Delete alarms in folder
-    const updatedAlarms = alarms.filter(alarm => alarm.folderId !== folderId);
-    await alarmStorage.saveAll(updatedAlarms);
-    
-    // Cancel notifications for deleted alarms
-    const deletedAlarms = alarms.filter(alarm => alarm.folderId === folderId);
-    for (const alarm of deletedAlarms) {
-      await cancelAlarm(alarm.id);
+    set({ isLoadingFolders: true, errorFolders: null });
+    try {
+      await folderService.deleteFolderAPI(folderId);
+      
+      // Cancel all notifications for alarms in this folder
+      const { alarms } = get();
+      const alarmsInDeletedFolder = alarms.filter(alarm => alarm.folderId === folderId);
+      for (const alarm of alarmsInDeletedFolder) {
+        await cancelAlarm(alarm.id);
+      }
+      
+      set(state => ({
+        folders: state.folders.filter(f => f.id !== folderId),
+        alarms: state.alarms.filter(a => a.folderId !== folderId),
+        isLoadingFolders: false,
+        activeAlarms: state.alarms.filter(a => a.folderId !== folderId && a.isActive).length
+      }));
+      
+    } catch (error) {
+      console.error("Failed to delete folder:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete folder';
+      set({ errorFolders: errorMessage, isLoadingFolders: false });
+      throw error;
     }
-    
-    set({
-      folders: updatedFolders,
-      alarms: updatedAlarms,
-      activeAlarms: updatedAlarms.filter(a => a.isActive).length
-    });
   },
   
   toggleFolderActive: async (folderId) => {
-    const { folders, alarms } = get();
-    
-    // Toggle folder active status
-    const updatedFolders = folders.map(folder =>
-      folder.id === folderId
-        ? { ...folder, isActive: !folder.isActive, updatedAt: Date.now() }
-        : folder
-    );
-    
-    await folderStorage.saveAll(updatedFolders);
-    set({ folders: updatedFolders });
-    
-    // Reschedule alarms
-    await rescheduleAllAlarms(alarms, updatedFolders);
+    const folderToToggle = get().folders.find(f => f.id === folderId);
+    if (!folderToToggle) {
+      console.error("Folder to toggle not found:", folderId);
+      set({ errorFolders: "Folder to toggle not found" });
+      return;
+    }
+    const updates: Partial<Omit<Folder, 'id' | 'userId' | 'createdAt' | 'updatedAt'>> = { is_active: !folderToToggle.is_active };
+    await get().updateFolder(folderId, updates);
   },
   
   getActiveAlarmCountByFolder: (folderId) => {
@@ -141,108 +201,105 @@ const useAlarmStore = create<AlarmState>((set, get) => ({
   },
   
   // Alarm operations
-  addAlarm: async (alarmData) => {
-    const { alarms, folders } = get();
-    
-    const newAlarm: Alarm = {
-      id: Date.now().toString(),
-      ...alarmData,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-    
-    const updatedAlarms = [...alarms, newAlarm];
-    await alarmStorage.saveAll(updatedAlarms);
-    
-    // Schedule alarm notification
-    if (newAlarm.isActive) {
-      const folder = folders.find(f => f.id === newAlarm.folderId);
-      if (folder && folder.isActive) {
-        await scheduleAlarm(newAlarm, folder);
-      }
-    }
-    
-    set({
-      alarms: updatedAlarms,
-      activeAlarms: updatedAlarms.filter(a => a.isActive).length
-    });
-    
-    return newAlarm.id;
-  },
-  
-  updateAlarm: async (updatedAlarm) => {
-    const { alarms, folders } = get();
-    
-    // Update alarm
-    const updatedAlarms = alarms.map(alarm =>
-      alarm.id === updatedAlarm.id
-        ? { ...updatedAlarm, updatedAt: Date.now() }
-        : alarm
-    );
-    
-    await alarmStorage.saveAll(updatedAlarms);
-    
-    // Reschedule alarm
-    await cancelAlarm(updatedAlarm.id);
-    
-    if (updatedAlarm.isActive) {
-      const folder = folders.find(f => f.id === updatedAlarm.folderId);
-      if (folder && folder.isActive) {
-        await scheduleAlarm(updatedAlarm, folder);
-      }
-    }
-    
-    set({
-      alarms: updatedAlarms,
-      activeAlarms: updatedAlarms.filter(a => a.isActive).length
-    });
-  },
-  
-  deleteAlarm: async (alarmId) => {
-    const { alarms } = get();
-    
-    // Cancel notification
-    await cancelAlarm(alarmId);
-    
-    // Delete alarm
-    const updatedAlarms = alarms.filter(alarm => alarm.id !== alarmId);
-    await alarmStorage.saveAll(updatedAlarms);
-    
-    set({
-      alarms: updatedAlarms,
-      activeAlarms: updatedAlarms.filter(a => a.isActive).length
-    });
-  },
-  
-  toggleAlarmActive: async (alarmId) => {
-    const { alarms, folders } = get();
-    
-    // Toggle alarm active status
-    const updatedAlarms = alarms.map(alarm =>
-      alarm.id === alarmId
-        ? { ...alarm, isActive: !alarm.isActive, updatedAt: Date.now() }
-        : alarm
-    );
-    
-    await alarmStorage.saveAll(updatedAlarms);
-    
-    // Update alarm notification
-    const updatedAlarm = updatedAlarms.find(a => a.id === alarmId);
-    if (updatedAlarm) {
-      await cancelAlarm(alarmId);
+  createAlarm: async (folderId, alarmData) => {
+    set({ isLoadingAlarms: true, errorAlarms: null });
+    try {
+      const newAlarmFromBackend = await alarmService.createAlarmInFolderAPI(folderId, alarmData);
+      const newAlarmTyped = mapBackendAlarmToStoreAlarm(newAlarmFromBackend);
       
-      if (updatedAlarm.isActive) {
-        const folder = folders.find(f => f.id === updatedAlarm.folderId);
-        if (folder && folder.isActive) {
-          await scheduleAlarm(updatedAlarm, folder);
+      set(state => {
+        const updatedAlarms = [...state.alarms, newAlarmTyped];
+        return { 
+          alarms: updatedAlarms, 
+          isLoadingAlarms: false, 
+          activeAlarms: updatedAlarms.filter(a => a.isActive).length 
+        };
+      });
+      
+      // Schedule notification if alarm is active
+      if (newAlarmTyped.isActive) {
+        const folder = get().folders.find(f => f.id === folderId);
+        if (folder && folder.is_active) {
+          await scheduleAlarm(newAlarmTyped, folder);
         }
       }
+      
+      return newAlarmTyped;
+    } catch (error) {
+      console.error("Failed to create alarm:", error);
+      const message = error instanceof Error ? error.message : 'Failed to create alarm';
+      set({ errorAlarms: message, isLoadingAlarms: false });
+      throw error;
+    }
+  },
+  
+  updateExistingAlarm: async (alarmId, updates) => {
+    set({ isLoadingAlarms: true, errorAlarms: null });
+    try {
+      const updatedAlarmFromBackend = await alarmService.updateAlarmAPI(alarmId, updates);
+      const updatedAlarmTyped = mapBackendAlarmToStoreAlarm(updatedAlarmFromBackend);
+      
+      set(state => {
+        const updatedAlarms = state.alarms.map(a => 
+          a.id === alarmId.toString() ? updatedAlarmTyped : a
+        );
+        return { 
+          alarms: updatedAlarms, 
+          isLoadingAlarms: false, 
+          activeAlarms: updatedAlarms.filter(a => a.isActive).length 
+        };
+      });
+      
+      // Update notification scheduling
+      await cancelAlarm(alarmId.toString());
+      if (updatedAlarmTyped.isActive) {
+        const folder = get().folders.find(f => f.id === updatedAlarmTyped.folderId);
+        if (folder && folder.is_active) {
+          await scheduleAlarm(updatedAlarmTyped, folder);
+        }
+      }
+      
+      return updatedAlarmTyped;
+    } catch (error) {
+      console.error(`Failed to update alarm ${alarmId}:`, error);
+      const message = error instanceof Error ? error.message : 'Failed to update alarm';
+      set({ errorAlarms: message, isLoadingAlarms: false });
+      throw error;
+    }
+  },
+  
+  deleteExistingAlarm: async (alarmId, folderId) => {
+    set({ isLoadingAlarms: true, errorAlarms: null });
+    try {
+      await alarmService.deleteAlarmAPI(alarmId);
+      await cancelAlarm(alarmId.toString());
+      
+      set(state => {
+        const remainingAlarms = state.alarms.filter(a => a.id !== alarmId.toString());
+        return { 
+          alarms: remainingAlarms, 
+          isLoadingAlarms: false, 
+          activeAlarms: remainingAlarms.filter(a => a.isActive).length 
+        };
+      });
+    } catch (error) {
+      console.error(`Failed to delete alarm ${alarmId}:`, error);
+      const message = error instanceof Error ? error.message : 'Failed to delete alarm';
+      set({ errorAlarms: message, isLoadingAlarms: false });
+      throw error;
+    }
+  },
+  
+  toggleExistingAlarmActive: async (alarmId, currentIsActive, folderId) => {
+    const alarmToToggle = get().alarms.find(a => a.id === alarmId.toString());
+    if (!alarmToToggle) {
+      console.error("Alarm to toggle not found:", alarmId);
+      set({ errorAlarms: "Alarm to toggle not found" });
+      return;
     }
     
-    set({
-      alarms: updatedAlarms,
-      activeAlarms: updatedAlarms.filter(a => a.isActive).length
-    });
+    const updates: UpdateAlarmPayload = { is_active: !currentIsActive };
+    await get().updateExistingAlarm(alarmId, updates);
   },
   
   getAlarmsByFolder: (folderId) => {
@@ -255,7 +312,7 @@ const useAlarmStore = create<AlarmState>((set, get) => ({
     const alarm = alarms.find(a => a.id === alarmId);
     
     if (alarm && alarm.isTemporary) {
-      await get().deleteAlarm(alarmId);
+      await get().deleteExistingAlarm(alarmId, alarm.folderId);
     }
   },
   

@@ -29,21 +29,22 @@ const FolderModal: React.FC<FolderModalProps> = ({
   useEffect(() => {
     if (folder) {
       setName(folder.name);
-      setSelectedDays(folder.recurrenceDays);
+      setSelectedDays(folder.recurrence_days);
+      console.log("folder.recurrenceDays in FolderModal:", folder.recurrence_days);
       
       // Determine preset based on selected days
-      if (folder.recurrenceDays.length === 7) {
+      if (folder.recurrence_days.length === 7) {
         setPreset('everyday');
       } else if (
-        folder.recurrenceDays.length === 5 &&
-        !folder.recurrenceDays.includes('saturday') &&
-        !folder.recurrenceDays.includes('sunday')
+        folder.recurrence_days.length === 5 &&
+        !folder.recurrence_days.includes('saturday') &&
+        !folder.recurrence_days.includes('sunday')
       ) {
         setPreset('weekdays');
       } else if (
-        folder.recurrenceDays.length === 2 &&
-        folder.recurrenceDays.includes('saturday') &&
-        folder.recurrenceDays.includes('sunday')
+        folder.recurrence_days.length === 2 &&
+        folder.recurrence_days.includes('saturday') &&
+        folder.recurrence_days.includes('sunday')
       ) {
         setPreset('weekends');
       } else {
@@ -108,8 +109,8 @@ const FolderModal: React.FC<FolderModalProps> = ({
     // Save folder
     onSave({
       name: name.trim(),
-      recurrenceDays: selectedDays,
-      isActive: folder ? folder.isActive : true,
+      recurrence_days: selectedDays,
+      is_active: folder ? folder.is_active : true,
     });
     
     onClose();

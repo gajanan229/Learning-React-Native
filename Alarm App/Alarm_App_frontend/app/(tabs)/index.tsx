@@ -1,80 +1,119 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { CirclePlus as PlusCircle, Folder } from 'lucide-react-native';
+import { CirclePlus as PlusCircle, Folder as FolderIcon } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../constants/theme';
 import FolderList from '../../components/folder/FolderList';
 import FolderModal from '../../components/folder/FolderModal';
 import useAlarmStore from '../../store/useAlarmStore';
+import { useAuthStore } from '../../store/useAuthStore';
 import { Folder as FolderType } from '../../types';
 
 export default function HomeFolderListScreen() {
   const router = useRouter();
-  const { folders, fetchFolders, addFolder, updateFolder, deleteFolder, toggleFolderActive } = useAlarmStore();
+  const {
+    folders,
+    fetchFolders,
+    addFolder,
+    updateFolder,
+    deleteFolder,
+    toggleFolderActive,
+    isLoadingFolders,
+    errorFolders,
+  } = useAlarmStore();
+  const { isAuthenticated } = useAuthStore();
   
   const [isAddFolderModalVisible, setIsAddFolderModalVisible] = useState(false);
   const [folderToEdit, setFolderToEdit] = useState<FolderType | undefined>(undefined);
-  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
-  const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
   
-  // Fetch folders when screen is focused
   useFocusEffect(
     useCallback(() => {
+      if (isAuthenticated) {
+        console.log("HomeFolderListScreen focused, user authenticated, fetching folders...");
       fetchFolders();
-    }, [fetchFolders])
+      }
+    }, [fetchFolders, isAuthenticated])
   );
   
-  // Open create folder modal
-  const handleAddFolder = () => {
+  useEffect(() => {
+    if (isAuthenticated) {
+        console.log("HomeFolderListScreen mounted, user authenticated, fetching folders...");
+        fetchFolders();
+    }
+  }, [isAuthenticated, fetchFolders]);
+  
+  const handleAddFolderPress = () => {
     setFolderToEdit(undefined);
     setIsAddFolderModalVisible(true);
   };
   
-  // Open edit folder modal
   const handleEditFolder = (folder: FolderType) => {
     setFolderToEdit(folder);
     setIsAddFolderModalVisible(true);
   };
   
-  // Handle folder deletion
-  const handleDeleteFolder = async (folderId: string) => {
-    setFolderToDelete(folderId);
-    // In a real app, show a confirmation modal here
+  const handleDeleteFolder = async (folderId: string | number) => {
+    try {
     await deleteFolder(folderId);
-    setFolderToDelete(null);
+    } catch (error) {
+      console.error("Failed to delete folder:", error);
+      Alert.alert("Error", "Could not delete folder. " + (error instanceof Error ? error.message : ''));
+    }
   };
   
-  // Handle folder toggle
-  const handleFolderToggle = async (folderId: string) => {
+  const handleFolderToggle = async (folderId: string | number) => {
+    try {
     await toggleFolderActive(folderId);
+    } catch (error) {
+      console.error("Failed to toggle folder active state:", error);
+      Alert.alert("Error", "Could not update folder status. " + (error instanceof Error ? error.message : ''));
+    }
   };
   
-  // Handle folder press (navigate to alarms)
   const handleFolderPress = (folder: FolderType) => {
     router.push({
       pathname: '/(tabs)/alarm-list',
       params: {
-        folderId: folder.id,
+        folderId: folder.id.toString(),
         folderName: folder.name,
-        folderRecurrenceDays: JSON.stringify(folder.recurrenceDays),
+        folderRecurrenceDays: folder.recurrenceDays ? JSON.stringify(folder.recurrenceDays) : JSON.stringify([]),
       },
     });
   };
   
-  // Handle save folder
-  const handleSaveFolder = async (folderData: Omit<FolderType, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (folderToEdit) {
-      await updateFolder({
-        ...folderToEdit,
-        ...folderData,
-      });
+  const handleSaveFolder = async (folderData: Omit<FolderType, 'id' | 'createdAt' | 'updatedAt' | 'userId'>) => {
+    try {
+      if (folderToEdit && folderToEdit.id) {
+        await updateFolder(folderToEdit.id, folderData); 
     } else {
       await addFolder(folderData);
     }
-    
     setIsAddFolderModalVisible(false);
     setFolderToEdit(undefined);
+    } catch (error) {
+      console.error("Failed to save folder:", error);
+      Alert.alert("Error", "Could not save folder. " + (error instanceof Error ? error.message : ''));
+    }
   };
+  
+  let content;
+  if (isLoadingFolders) {
+    content = <ActivityIndicator size="large" color={colors.accent.primary} style={styles.centeredMessage} />;
+  } else if (errorFolders) {
+    content = <Text style={styles.centeredMessage}>Error: {errorFolders}</Text>;
+  } else if (folders.length === 0) {
+    content = <Text style={styles.centeredMessage}>No alarm folders yet. Tap 'Folder' to create one!</Text>;
+  } else {
+    content = (
+      <FolderList
+        folders={folders}
+        onFolderPress={handleFolderPress}
+        onFolderToggle={handleFolderToggle}
+        onFolderEdit={handleEditFolder}
+        onFolderDelete={handleDeleteFolder}
+      />
+    );
+  }
   
   return (
     <View style={styles.container}>
@@ -83,21 +122,15 @@ export default function HomeFolderListScreen() {
         
         <TouchableOpacity
           style={styles.addButton}
-          onPress={handleAddFolder}
+          onPress={handleAddFolderPress}
           activeOpacity={0.7}
         >
-          <Folder size={20} color={colors.accent.primary} />
+          <FolderIcon size={20} color={colors.accent.primary} />
           <Text style={styles.addButtonText}>Folder</Text>
         </TouchableOpacity>
       </View>
       
-      <FolderList
-        folders={folders}
-        onFolderPress={handleFolderPress}
-        onFolderToggle={handleFolderToggle}
-        onFolderEdit={handleEditFolder}
-        onFolderDelete={handleDeleteFolder}
-      />
+      {content}
       
       <TouchableOpacity
         style={styles.settingsButton}
@@ -107,7 +140,6 @@ export default function HomeFolderListScreen() {
         <Text style={styles.settingsButtonText}>Settings</Text>
       </TouchableOpacity>
       
-      {/* Folder Create/Edit Modal */}
       <FolderModal
         visible={isAddFolderModalVisible}
         onClose={() => {
@@ -131,7 +163,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.xl + spacing.lg, // Account for status bar
+    paddingTop: spacing.xl + spacing.lg,
     paddingBottom: spacing.md,
     backgroundColor: colors.background.primary,
   },
@@ -161,4 +193,13 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.md,
     color: colors.text.secondary,
   },
+  centeredMessage: {
+    flex: 1,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    paddingHorizontal: spacing.lg,
+    fontFamily: typography.fontFamily.regular,
+    fontSize: typography.fontSize.md,
+    color: colors.text.secondary,
+  }
 });

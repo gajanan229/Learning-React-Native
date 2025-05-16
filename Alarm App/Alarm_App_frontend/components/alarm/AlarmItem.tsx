@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Clock } from 'lucide-react-native';
 import { format } from 'date-fns';
@@ -10,9 +10,15 @@ interface AlarmItemProps {
   alarm: Alarm;
   onPress: () => void;
   onToggle: () => void;
+  disabled?: boolean;
 }
 
-const AlarmItem: React.FC<AlarmItemProps> = ({ alarm, onPress, onToggle }) => {
+const AlarmItem: React.FC<AlarmItemProps> = ({ 
+  alarm, 
+  onPress, 
+  onToggle,
+  disabled = false 
+}) => {
   // Format time for display (HH:MM to 12-hour format with AM/PM)
   const formatTime = (timeString: string) => {
     const [hours, minutes] = timeString.split(':').map(Number);
@@ -21,30 +27,57 @@ const AlarmItem: React.FC<AlarmItemProps> = ({ alarm, onPress, onToggle }) => {
     return format(date, 'hh:mm a');
   };
 
+  // Create a proper handler function for the toggle switch
+  const handleToggle = useCallback((value: boolean) => {
+    if (!disabled) {
+      onToggle();
+    }
+  }, [disabled, onToggle]);
+
   return (
     <TouchableOpacity
-      style={styles.container}
-      onPress={onPress}
-      activeOpacity={0.7}
+      style={[
+        styles.container,
+        disabled && styles.disabledContainer
+      ]}
+      onPress={disabled ? undefined : onPress}
+      activeOpacity={disabled ? 1 : 0.7}
+      disabled={disabled}
     >
       <View style={styles.timeContainer}>
-        <Text style={styles.timeText}>{formatTime(alarm.time)}</Text>
+        <Text style={[
+          styles.timeText,
+          disabled && styles.disabledText
+        ]}>
+          {formatTime(alarm.time)}
+        </Text>
         
         {alarm.label && (
-          <Text style={styles.labelText}>{alarm.label}</Text>
+          <Text style={[
+            styles.labelText,
+            disabled && styles.disabledText
+          ]}>
+            {alarm.label}
+          </Text>
         )}
         
         {alarm.isTemporary && (
           <View style={styles.temporaryContainer}>
-            <Clock size={16} color={colors.text.secondary} />
-            <Text style={styles.temporaryText}>One-time</Text>
+            <Clock size={16} color={disabled ? colors.text.tertiary : colors.text.secondary} />
+            <Text style={[
+              styles.temporaryText,
+              disabled && styles.disabledText
+            ]}>
+              One-time
+            </Text>
           </View>
         )}
       </View>
       
       <ToggleSwitch
         value={alarm.isActive}
-        onValueChange={onToggle}
+        onValueChange={handleToggle}
+        disabled={disabled}
       />
     </TouchableOpacity>
   );
@@ -60,6 +93,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.interactive.secondary,
   },
+  disabledContainer: {
+    opacity: 0.6,
+  },
   timeContainer: {
     flex: 1,
   },
@@ -67,6 +103,9 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily.bold,
     fontSize: typography.fontSize.xl,
     color: colors.text.primary,
+  },
+  disabledText: {
+    color: colors.text.tertiary,
   },
   labelText: {
     fontFamily: typography.fontFamily.regular,

@@ -20,6 +20,7 @@ const FolderCard: React.FC<FolderCardProps> = ({ folder, onPress, onToggle }) =>
   
   // Get formatted recurrence days
   const getRecurrenceText = (days: Day[]) => {
+    if (!days || !Array.isArray(days)) return 'No recurrence';
     if (days.length === 7) return 'Every Day';
     if (days.length === 5 && !days.includes('saturday') && !days.includes('sunday')) {
       return 'Weekdays';
@@ -30,7 +31,7 @@ const FolderCard: React.FC<FolderCardProps> = ({ folder, onPress, onToggle }) =>
     return null;
   };
   
-  const recurrenceText = getRecurrenceText(folder.recurrenceDays);
+  const recurrenceText = getRecurrenceText(folder.recurrence_days);
   
   return (
     <Card>
@@ -46,7 +47,7 @@ const FolderCard: React.FC<FolderCardProps> = ({ folder, onPress, onToggle }) =>
             {recurrenceText ? (
               <Text style={styles.recurrenceText}>{recurrenceText}</Text>
             ) : (
-              folder.recurrenceDays.map(day => (
+              folder.recurrence_days.map(day => (
                 <DayBadge key={day} day={dayToShort[day]} isActive size="sm" />
               ))
             )}
@@ -60,7 +61,7 @@ const FolderCard: React.FC<FolderCardProps> = ({ folder, onPress, onToggle }) =>
         </View>
         
         <View style={styles.toggleContainer}>
-          <ToggleSwitch value={folder.isActive} onValueChange={onToggle} />
+          <ToggleSwitch value={folder.is_active} onValueChange={onToggle} />
         </View>
       </TouchableOpacity>
     </Card>
@@ -86,6 +87,7 @@ const styles = StyleSheet.create({
   recurrenceContainer: {
     flexDirection: 'row',
     marginBottom: spacing.xs,
+    flexWrap: 'wrap',
   },
   recurrenceText: {
     fontFamily: typography.fontFamily.medium,

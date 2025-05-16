@@ -35,8 +35,8 @@ export type RecurrencePreset = 'everyday' | 'weekdays' | 'weekends' | 'custom';
 export interface Folder {
   id: string;
   name: string;
-  recurrenceDays: Day[];
-  isActive: boolean; // Master toggle for the folder
+  recurrence_days: Day[];
+  is_active: boolean; // Master toggle for the folder
   createdAt: number;
   updatedAt: number;
 }
