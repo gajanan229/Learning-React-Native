@@ -85,10 +85,8 @@ The ChronoFold Alarm App allows users to create, manage, and organize alarms wit
 
 The project is organized into two main directories: `Alarm_App_frontend/` and `Alarm_App_backend/`.
 
-### Frontend Structure
-Alarm_App_frontend/
 ### Frontend Structure (`Alarm_App_frontend/`)
-
+```
 Alarm_App_frontend/
 ├── app/                  # Expo Router: Screens and Layouts
 │   ├── (auth)/           # Authentication flow group
@@ -153,9 +151,10 @@ Alarm_App_frontend/
 ├── package-lock.json     # Records exact versions of dependencies
 ├── package.json          # Project metadata, dependencies, and scripts
 └── tsconfig.json         # TypeScript compiler configuration
-### Backend Structure
-### Backend Structure (`Alarm_App_backend/`)
+```
 
+### Backend Structure (`Alarm_App_backend/`)
+```
 Alarm_App_backend/
 ├── config/               # Configuration files
 │   └── db.js             # PostgreSQL database connection setup
@@ -180,7 +179,7 @@ Alarm_App_backend/
 ├── index.js              # Main application entry point for the server
 ├── package-lock.json     # Records exact versions of dependencies
 └── package.json          # Project metadata, dependencies, and scripts
-
+```
 ## Database Schema
 
 The database schema defines two main tables: `folders` and `alarms`.
