@@ -39,5 +39,6 @@ export default {
     accentTransparent: 'rgba(59, 130, 246, 0.15)',
     subtleText: '#9CA3AF',
     border: '#333333',
+    destructive: '#FF3B30',
   },
 };

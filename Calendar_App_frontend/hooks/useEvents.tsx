@@ -83,7 +83,7 @@ const generateSampleEvents = (): Event[] => {
 };
 
 const EventsContext = createContext<EventsContextType>({
-  events: [],
+  events: generateSampleEvents(),
   addEvent: () => {},
   updateEvent: () => {},
   deleteEvent: () => {},

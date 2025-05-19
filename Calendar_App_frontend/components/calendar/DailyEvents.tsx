@@ -3,10 +3,11 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native
 import { router } from 'expo-router';
 import { format, isSameDay } from 'date-fns';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { useEvents } from '@/hooks/useEvents';
+import { useEvents, Event } from '@/hooks/useEvents';
 import Colors from '@/constants/Colors';
 import { NeumorphicView } from '../ui/NeumorphicView';
 import { MapPin, Clock } from 'lucide-react-native';
+
 
 interface DailyEventsProps {
   date: Date;
@@ -22,7 +23,7 @@ export function DailyEvents({ date }: DailyEventsProps) {
     isSameDay(new Date(event.startTime), date)
   );
   
-  const renderEvent = ({ item }: { item: any }) => {
+  const renderEvent = ({ item }: { item: Event }) => {
     return (
       <TouchableOpacity
         onPress={() => router.push({
@@ -116,21 +117,25 @@ const styles = StyleSheet.create({
   },
   eventItem: {
     marginBottom: 12,
+    height: 120,
   },
   eventCard: {
     flexDirection: 'row',
-    paddingVertical: 12,
+    paddingVertical: 1,
     paddingHorizontal: 0,
     borderRadius: 8,
     overflow: 'hidden',
+    flex: 1,
   },
   eventColor: {
-    width: 6,
-    height: '100%',
+    height: 6,
+    width: '100%',
+    alignSelf: 'stretch',
   },
   eventContent: {
     flex: 1,
     paddingHorizontal: 16,
+    alignSelf: 'stretch',
   },
   eventTitle: {
     fontSize: 16,

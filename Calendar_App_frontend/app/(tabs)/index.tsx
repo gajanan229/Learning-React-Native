@@ -78,12 +78,12 @@ export default function MonthView() {
         activeOpacity={0.7}
       >
         <NeumorphicView 
-          style={[
-            styles.dayCellInner,
-            isToday && styles.todayCell,
-            isSelected && styles.selectedCell,
-            !isCurrentMonth && styles.outsideMonthCell,
-          ]}
+          style={{
+            ...styles.dayCellInner,
+            ...(isToday && styles.todayCell),
+            ...(isSelected && styles.selectedCell),
+            ...(!isCurrentMonth && styles.outsideMonthCell),
+          }}
           lightShadowColor={isSelected ? colors.accentLight : undefined}
           darkShadowColor={isSelected ? colors.accentDark : undefined}
           isPressed={isSelected}

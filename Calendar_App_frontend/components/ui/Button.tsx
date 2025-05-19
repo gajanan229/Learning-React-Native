@@ -68,12 +68,10 @@ export function Button({
       activeOpacity={0.7}
     >
       <NeumorphicView
-        style={[
-          styles.buttonInner,
-          {
+        style={{
+          ...styles.buttonInner,
             backgroundColor: getBackgroundColor(),
-          }
-        ]}
+        }}
         isPressed={variant === 'secondary'}
       >
         {loading ? (

@@ -69,7 +69,7 @@ export default function CreateEventScreen() {
           </TouchableOpacity>
         </View>
         
-        <ScrollView style={styles.scrollContent}>
+        <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollContentContainer}>
           <View style={styles.formGroup}>
             <TextInput
               style={[styles.titleInput, { color: colors.text, borderColor: colors.border }]}
@@ -226,6 +226,10 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingVertical: 16,
+    flexGrow: 1,
+  },
+  scrollContentContainer: {
+    paddingBottom: 20,
   },
   formGroup: {
     marginBottom: 20,
@@ -313,7 +317,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     marginTop: 20,
-    marginBottom: 20,
+    marginBottom: 80,
   },
   button: {
     minWidth: 100,

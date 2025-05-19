@@ -72,14 +72,15 @@ const styles = StyleSheet.create({
   },
   eventCard: {
     flexDirection: 'row',
-    paddingVertical: 12,
+    paddingVertical: 1,
     paddingHorizontal: 0,
     borderRadius: 8,
     overflow: 'hidden',
+    height: 120,
   },
   eventColor: {
-    width: 6,
-    height: '100%',
+    height: 6,
+    width: '100%',
   },
   eventContent: {
     flex: 1,

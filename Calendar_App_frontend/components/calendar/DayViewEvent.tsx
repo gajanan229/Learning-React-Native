@@ -91,10 +91,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderRadius: 6,
     overflow: 'hidden',
+    height: 120,
   },
   eventColor: {
-    width: 5,
-    height: '100%',
+    height: 5,
+    width: '100%',
   },
   eventContent: {
     flex: 1,
