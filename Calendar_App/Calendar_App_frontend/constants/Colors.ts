@@ -25,6 +25,7 @@ export default {
     accentTransparent: 'rgba(59, 130, 246, 0.1)',
     subtleText: '#6B7280',
     border: '#E5E7EB',
+    destructive: '#EF4444',
   },
   dark: {
     text: '#FFFFFF',

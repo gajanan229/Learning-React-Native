@@ -3,11 +3,13 @@ import { View, Text, StyleSheet, TouchableOpacity, Switch, ScrollView } from 're
 import { useColorScheme } from '@/hooks/useColorScheme';
 import Colors from '@/constants/Colors';
 import { NeumorphicView } from '@/components/ui/NeumorphicView';
-import { Calendar, Bell, Clock, Globe, Info, Moon, Sun } from 'lucide-react-native';
+import { Calendar, Bell, Clock, Globe, Info, Moon, Sun, LogOut } from 'lucide-react-native';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export default function SettingsScreen() {
   const { colorScheme, toggleColorScheme } = useColorScheme();
   const colors = Colors[colorScheme];
+  const auth = useAuthStore();
   
   const [firstDayOfWeek, setFirstDayOfWeek] = useState<'Sunday' | 'Monday'>('Sunday');
   const [defaultView, setDefaultView] = useState<'Month' | 'Week' | 'Day' | 'Agenda'>('Month');
@@ -22,10 +24,11 @@ export default function SettingsScreen() {
     icon: React.ReactNode,
     title: string,
     subtitle: string,
-    action: React.ReactNode
+    action: React.ReactNode,
+    onPress?: () => void
   ) => {
-    return (
-      <NeumorphicView style={styles.settingItem}>
+    const itemContent = (
+      <>
         <View style={styles.settingIconContainer}>
           {icon}
         </View>
@@ -36,12 +39,32 @@ export default function SettingsScreen() {
         <View style={styles.settingAction}>
           {action}
         </View>
+      </>
+    );
+
+    if (onPress) {
+      return (
+        <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+          <NeumorphicView style={styles.settingItem}>
+            {itemContent}
+          </NeumorphicView>
+        </TouchableOpacity>
+      );
+    }
+
+    return (
+      <NeumorphicView style={styles.settingItem}>
+        {itemContent}
       </NeumorphicView>
     );
   };
   
   const handleDefaultViewChange = (view: 'Month' | 'Week' | 'Day' | 'Agenda') => {
     setDefaultView(view);
+  };
+
+  const handleLogout = async () => {
+    await auth.logout();
   };
   
   return (
@@ -143,6 +166,17 @@ export default function SettingsScreen() {
             'About ChronoShade',
             'Version 1.0.0',
             <Text style={[styles.actionText, { color: colors.accent }]}>More</Text>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.subtleText }]}>ACCOUNT</Text>
+          {renderSettingItem(
+            <LogOut size={24} color={colors.destructive} />,
+            'Logout',
+            'Sign out of your account',
+            <View />,
+            handleLogout
           )}
         </View>
       </ScrollView>

@@ -76,7 +76,7 @@ export default function HomeFolderListScreen() {
       params: {
         folderId: folder.id.toString(),
         folderName: folder.name,
-        folderRecurrenceDays: folder.recurrenceDays ? JSON.stringify(folder.recurrenceDays) : JSON.stringify([]),
+        folderRecurrenceDays: folder.recurrence_days ? JSON.stringify(folder.recurrence_days) : JSON.stringify([]),
       },
     });
   };

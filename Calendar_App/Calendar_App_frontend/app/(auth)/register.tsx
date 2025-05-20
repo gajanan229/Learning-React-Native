@@ -75,7 +75,7 @@ export default function RegisterScreen() {
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.container}>
           <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join ChronoFold Today</Text>
+          <Text style={styles.subtitle}>Join Your Calendar App</Text>
 
           <View style={styles.inputWrapper}>
             <TextField

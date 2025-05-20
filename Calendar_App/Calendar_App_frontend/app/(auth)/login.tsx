@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     alignItems: 'center',
     padding: spacing.md,
-    backgroundColor: colors.dark.background,
+    backgroundColor: colors.dark.secondaryBackground,
     borderRadius: borderRadius.lg,
     ...shadows.lg,
   },
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
   globalErrorText: {
     fontFamily: typography.fontFamily.regular,
     fontSize: typography.fontSize.sm,
-    color: colors.dark.accent,
+    color: colors.dark.destructive,
     textAlign: 'center',
     marginBottom: spacing.md,
     width: '100%',
