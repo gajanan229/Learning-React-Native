@@ -50,9 +50,9 @@ export interface CreateEventPayload {
 // All fields are optional. Backend fields (snake_case) are used for consistency if mapping.
 export type UpdateEventPayload = Partial<{
   title?: string;
-  start_time?: string;
-  end_time?: string;
-  is_all_day?: boolean;
+  startTime?: string; // Changed to camelCase
+  endTime?: string;   // Changed to camelCase
+  isAllDay?: boolean; // Changed to camelCase
   location?: string;
   description?: string; // Backend uses 'description'
   color?: string;
@@ -125,8 +125,7 @@ export const createEventAPI = async (eventData: CreateEventPayload): Promise<Eve
  */
 export const updateEventAPI = async (eventId: string, updates: UpdateEventPayload): Promise<Event> => {
   try {
-    // The UpdateEventPayload is defined with optional snake_case fields.
-    // Ensure the payload sent to the backend uses correct field names.
+    console.log(`Updating event ${eventId} with payload:`, updates); // Log the payload
     const response = await calendarApiClient.put<BackendEvent>(`/events/${eventId}`, updates);
     return mapBackendEventToStoreEvent(response.data);
   } catch (error) {
