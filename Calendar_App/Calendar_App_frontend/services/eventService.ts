@@ -9,7 +9,7 @@ export interface BackendEvent {
   end_time: string;   // ISO date string
   is_all_day: boolean;
   location?: string | null;
-  notes?: string | null;
+  description?: string | null; // Backend uses 'description' instead of 'notes'
   color?: string | null; // Assuming color is optional and nullable from backend
   // reminder_time?: string; // Add if backend supports this
   created_at: string; // ISO date string
@@ -37,11 +37,11 @@ export interface Event {
 // Maps frontend camelCase to backend snake_case where necessary for the API call
 export interface CreateEventPayload {
   title: string;
-  start_time: string; // Matches backend
-  end_time: string;   // Matches backend
-  is_all_day?: boolean;
+  startTime: string; // Use camelCase to match frontend payload and backend error message
+  endTime: string;   // Use camelCase to match frontend payload and backend error message
+  isAllDay?: boolean; // Use camelCase to match frontend payload and backend error message
   location?: string;
-  notes?: string;
+  description?: string; // Backend uses 'description'
   color?: string;
   // reminder_time?: string; // Add if backend supports this
 }
@@ -54,7 +54,7 @@ export type UpdateEventPayload = Partial<{
   end_time?: string;
   is_all_day?: boolean;
   location?: string;
-  notes?: string;
+  description?: string; // Backend uses 'description'
   color?: string;
   // reminder_time?: string; // Add if backend supports this
 }>;
@@ -68,7 +68,7 @@ const mapBackendEventToStoreEvent = (backendEvent: BackendEvent): Event => {
     endTime: backendEvent.end_time,
     isAllDay: backendEvent.is_all_day,
     location: backendEvent.location || undefined, // Handle null from backend
-    notes: backendEvent.notes || undefined,       // Handle null from backend
+    notes: backendEvent.description || undefined,       // Map backend 'description' to frontend 'notes'
     color: backendEvent.color || '#007AFF', // Default color if backend sends null/undefined
     // reminderTime: backendEvent.reminder_time || undefined, // Uncomment and adjust if backend has this
     // Consider mapping user_id, created_at, updated_at if needed in the UI Event type
@@ -110,6 +110,7 @@ export const createEventAPI = async (eventData: CreateEventPayload): Promise<Eve
   try {
     // The CreateEventPayload is already defined with snake_case for time fields.
     // If other fields needed mapping, it would be done here or ensured by the payload type.
+    console.log('Creating event with data:', eventData);
     const response = await calendarApiClient.post<BackendEvent>('/events', eventData);
     return mapBackendEventToStoreEvent(response.data);
   } catch (error) {

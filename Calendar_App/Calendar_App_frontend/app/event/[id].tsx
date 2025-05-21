@@ -14,7 +14,7 @@ export default function EventDetailsScreen() {
   const { colorScheme } = useColorScheme();
   const colors = Colors[colorScheme];
   const { id } = useLocalSearchParams();
-  const { events, deleteEvent } = useEvents();
+  const { events, removeEvent } = useEvents();
   
   const event = events.find(e => e.id === id);
   
@@ -48,7 +48,7 @@ export default function EventDetailsScreen() {
         {
           text: "Delete",
           onPress: () => {
-            deleteEvent(event.id);
+            removeEvent(event.id);
             router.back();
           },
           style: "destructive"
@@ -59,7 +59,13 @@ export default function EventDetailsScreen() {
   
   const handleEdit = () => {
     // Navigate to edit screen (not implemented in this MVP)
-    router.back();
+    if (event && event.id) {
+      router.push({ pathname: '/event/create', params: { id: event.id } });
+    } else {
+      // Fallback or error handling if event or event.id is somehow not available
+      console.warn('Cannot edit event: event data is missing.');
+      router.back();
+    }
   };
   
   return (

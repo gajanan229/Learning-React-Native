@@ -6,53 +6,99 @@ import { X, ChevronDown, MapPin, Bell, Plus } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useEvents } from '@/hooks/useEvents';
-import Colors from '@/constants/Colors';
+import Colors, { EVENT_COLORS } from '@/constants/Colors';
 import { NeumorphicView } from '@/components/ui/NeumorphicView';
 import { Button } from '@/components/ui/Button';
 import { ColorSelector } from '@/components/event/ColorSelector';
-import { EVENT_COLORS } from '@/constants/Colors';
 
 export default function CreateEventScreen() {
   const { colorScheme } = useColorScheme();
   const colors = Colors[colorScheme];
-  const { addEvent } = useEvents();
+  const { events, addEvent, editEvent, removeEvent } = useEvents();
   const params = useLocalSearchParams();
+  const eventId = params.id as string | undefined;
+  const isEditMode = !!eventId;
   
-  // Set default start time from params or use current time
-  const initialStartTime = params.startTime 
-    ? new Date(params.startTime as string) 
-    : new Date();
-  
-  const initialEndTime = addHours(initialStartTime, 1);
-  
+  const getInitialStartTime = () => {
+    if (params.startTime) return new Date(params.startTime as string);
+    return new Date();
+  };
+
   const [title, setTitle] = useState('');
-  const [startTime, setStartTime] = useState(initialStartTime);
-  const [endTime, setEndTime] = useState(initialEndTime);
+  const [startTime, setStartTime] = useState(getInitialStartTime());
+  const [endTime, setEndTime] = useState(addHours(getInitialStartTime(), 1));
   const [isAllDay, setIsAllDay] = useState(false);
   const [location, setLocation] = useState('');
-  const [notes, setNotes] = useState('');
+  const [description, setDescription] = useState('');
   const [selectedColor, setSelectedColor] = useState(EVENT_COLORS[0]);
   const [reminderTime, setReminderTime] = useState('15 minutes before');
   
-  const handleSave = () => {
+  useEffect(() => {
+    if (isEditMode && eventId) {
+      const eventToEdit = events.find(e => e.id === eventId);
+      if (eventToEdit) {
+        setTitle(eventToEdit.title);
+        setStartTime(new Date(eventToEdit.startTime));
+        setEndTime(new Date(eventToEdit.endTime));
+        setIsAllDay(eventToEdit.isAllDay);
+        setLocation(eventToEdit.location || '');
+        setDescription(eventToEdit.notes || '');
+        setSelectedColor(eventToEdit.color || EVENT_COLORS[0]);
+        setReminderTime(eventToEdit.reminderTime || '15 minutes before');
+      }
+    }
+  }, [eventId, isEditMode, events]);
+  
+  const handleSave = async () => {
     if (!title.trim()) {
       // Show error for empty title
       return;
     }
     
-    addEvent({
-      id: Date.now().toString(),
+    const eventData = {
       title,
-      startTime: startTime.toISOString(),
-      endTime: endTime.toISOString(),
-      isAllDay,
       location,
-      notes,
+      description,
       color: selectedColor,
-      reminderTime,
-    });
-    
-    router.back();
+      // reminder_time: reminderTime, // Keep for backend if supported
+    };
+
+    try {
+      if (isEditMode && eventId) {
+        // Edit existing event - using snake_case as per UpdateEventPayload
+        await editEvent(eventId, {
+          ...eventData,
+          start_time: startTime.toISOString(),
+          end_time: endTime.toISOString(),
+          is_all_day: isAllDay,
+        });
+      } else {
+        // Create new event - using camelCase as fixed earlier
+        await addEvent({
+          ...eventData,
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+          isAllDay: isAllDay,
+        });
+      }
+      router.back();
+    } catch (error) {
+      console.error(isEditMode ? 'Failed to update event:' : 'Failed to save event:', error);
+      // TODO: Show error message to user
+    }
+  };
+
+  const handleDelete = async () => {
+    if (isEditMode && eventId) {
+      // Consider adding Alert confirmation here
+      try {
+        await removeEvent(eventId);
+        router.back(); // Or navigate to a different screen after delete
+      } catch (error) {
+        console.error('Failed to delete event:', error);
+        // TODO: Show error message to user
+      }
+    }
   };
   
   return (
@@ -63,7 +109,9 @@ export default function CreateEventScreen() {
     >
       <NeumorphicView style={styles.modalContainer}>
         <View style={styles.header}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>New Event</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {isEditMode ? 'Edit Event' : 'New Event'}
+          </Text>
           <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
             <X size={24} color={colors.text} />
           </TouchableOpacity>
@@ -164,8 +212,8 @@ export default function CreateEventScreen() {
                 style={[styles.notesInput, { color: colors.text }]}
                 placeholder="Add notes"
                 placeholderTextColor={colors.subtleText}
-                value={notes}
-                onChangeText={setNotes}
+                value={description}
+                onChangeText={setDescription}
                 multiline
                 numberOfLines={4}
               />
@@ -187,6 +235,16 @@ export default function CreateEventScreen() {
               disabled={!title.trim()}
             />
           </View>
+          {isEditMode && (
+            <View style={styles.deleteButtonContainer}>
+              <Button
+                title="Delete Event"
+                onPress={handleDelete}
+                variant="danger"
+                style={styles.deleteButton}
+              />
+            </View>
+          )}
         </ScrollView>
       </NeumorphicView>
     </BlurView>
@@ -322,5 +380,12 @@ const styles = StyleSheet.create({
   button: {
     minWidth: 100,
     marginLeft: 12,
+  },
+  deleteButtonContainer: {
+    marginTop: 16,
+    paddingHorizontal: 20, // Match form padding if needed
+  },
+  deleteButton: {
+    width: '100%',
   },
 });

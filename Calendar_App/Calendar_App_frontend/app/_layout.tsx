@@ -8,7 +8,6 @@ import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ColorSchemeProvider } from '@/hooks/useColorScheme';
 import { useAuthStore } from '@/store/useAuthStore';
-import { EventsProvider } from '@/hooks/useEvents';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync().catch(() => { /* Ignore errors */ });
@@ -76,16 +75,14 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ColorSchemeProvider>
-        <EventsProvider>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="event/[id]" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="event/create" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="+not-found" />
-          </Stack>
-          <StatusBar style="light" />
-        </EventsProvider>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="event/[id]" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="event/create" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="+not-found" />
+        </Stack>
+        <StatusBar style="light" />
       </ColorSchemeProvider>
     </GestureHandlerRootView>
   );
