@@ -1,0 +1,32 @@
+{
+  "name": "todo_app_backend",
+  "version": "1.0.0",
+  "description": "Backend server for ToDo App with task and folder management",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "keywords": [
+    "todo",
+    "backend",
+    "api",
+    "tasks",
+    "folders"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "helmet": "^6.1.5",
+    "jsonwebtoken": "^9.0.0",
+    "node-fetch": "^3.3.2",
+    "pg": "^8.11.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  }
+}
