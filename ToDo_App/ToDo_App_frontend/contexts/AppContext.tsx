@@ -7,6 +7,9 @@ export interface Task {
   completed: boolean;
   folderId?: string;
   createdAt: number;
+  description?: string;
+  priority?: 'high' | 'medium' | 'low';
+  dueDate?: string; // ISO string
 }
 
 export interface Folder {
@@ -18,7 +21,7 @@ export interface Folder {
 interface AppContextProps {
   tasks: Task[];
   folders: Folder[];
-  addTask: (title: string, folderId?: string) => void;
+  addTask: (title: string, folderId?: string, description?: string, priority?: 'high' | 'medium' | 'low', dueDate?: string) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
   toggleTask: (id: string) => void;
@@ -92,13 +95,16 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
   }, [folders]);
 
   // Add a new task
-  const addTask = (title: string, folderId?: string) => {
+  const addTask = (title: string, folderId?: string, description?: string, priority?: 'high' | 'medium' | 'low', dueDate?: string) => {
     const newTask: Task = {
       id: Date.now().toString(),
       title,
       completed: false,
       folderId,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      description,
+      priority,
+      dueDate
     };
     
     setTasks(prevTasks => [...prevTasks, newTask]);

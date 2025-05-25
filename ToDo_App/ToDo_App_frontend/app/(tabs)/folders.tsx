@@ -26,7 +26,7 @@ export default function FoldersScreen() {
       
       <Animated.ScrollView
         className="flex-1 px-4"
-        contentContainerClassName="pb-24 pt-4"
+        contentContainerStyle={{ paddingBottom: 96, paddingTop: 16 }}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: true }

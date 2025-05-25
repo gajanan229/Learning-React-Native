@@ -30,6 +30,7 @@ export default function RootLayout() {
 
     const inAuthGroup = segments[0] === '(auth)';
     const inTabsGroup = segments[0] === '(tabs)';
+    const inCreateGroup = segments[0] === 'Create';
 
     if (isAuthenticated && inAuthGroup) {
       // User is authenticated but still in auth screens, navigate to main app
@@ -40,7 +41,7 @@ export default function RootLayout() {
     } else if (!isAuthenticated && !inAuthGroup) {
       // User is not authenticated and not in auth group, navigate to login
       router.replace('/(auth)/login');
-    } else if (isAuthenticated && !inTabsGroup && !inAuthGroup) {
+    } else if (isAuthenticated && !inTabsGroup && !inAuthGroup && !inCreateGroup) {
       // User is authenticated but not in any known group, navigate to main app
       router.replace('/(tabs)');
     }
@@ -64,6 +65,7 @@ export default function RootLayout() {
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="Create" options={{ headerShown: false }} />
             <Stack.Screen name="+not-found" />
           </Stack>
           <StatusBar style="light" />
