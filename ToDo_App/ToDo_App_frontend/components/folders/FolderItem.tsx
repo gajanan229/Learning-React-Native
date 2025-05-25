@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Folder, Edit, Trash2 } from 'lucide-react-native';
-import { useAppContext, Folder as FolderType } from '@/contexts/AppContext';
+import { Folder as FolderType } from '@/types/api';
+import { useFolders } from '@/hooks/useFolders';
 import { PanGestureHandler } from 'react-native-gesture-handler';
 import Reanimated, {
   useAnimatedGestureHandler,
@@ -27,7 +28,7 @@ const SWIPE_THRESHOLD_PERCENTAGE = 0.25;
 
 export default function FolderItem({ folder, taskCount, completionCount }: FolderItemProps) {
   const router = useRouter();
-  const { showModal } = useAppContext();
+  const { deleteFolder, updateFolder } = useFolders();
   
   // Swipe animation values
   const translateX = useSharedValue(0);
@@ -107,20 +108,39 @@ export default function FolderItem({ folder, taskCount, completionCount }: Folde
     if (hasOpened.value) {
       resetSwipe();
     } else {
+      console.log(`🔍 Navigating to folder: ${folder.id} (${folder.name})`);
       router.push(`/folder/${folder.id}`);
     }
   };
   
   const handleEdit = () => {
     resetSwipe();
-    showModal('folder', folder);
+    router.push(`/Create/new-folder?id=${folder.id}`);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
   const handleDelete = () => {
     resetSwipe();
-    showModal('delete-folder', folder);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Alert.alert(
+      'Delete Folder',
+      `Are you sure you want to delete "${folder.name}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteFolder(folder.id);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } catch (error) {
+              console.error('Error deleting folder:', error);
+              Alert.alert('Error', 'Failed to delete folder. Please try again.');
+            }
+          }
+        }
+      ]
+    );
   };
   
   // Calculate completion percentage

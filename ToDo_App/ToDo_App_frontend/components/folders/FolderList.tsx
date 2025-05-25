@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import FolderItem from './FolderItem';
-import { Folder } from '@/contexts/AppContext';
+import { Folder } from '@/types/api';
 
 interface FolderListProps {
   folders: Folder[];
@@ -10,8 +10,19 @@ interface FolderListProps {
 }
 
 export default function FolderList({ folders, getTaskCount, getCompletionCount }: FolderListProps) {
-  // Sort folders by most recently created first
-  const sortedFolders = [...folders].sort((a, b) => b.createdAt - a.createdAt);
+  // Enhanced sorting: by task count (descending), then by creation date (newest first)
+  const sortedFolders = [...folders].sort((a, b) => {
+    const aTaskCount = getTaskCount(a.id);
+    const bTaskCount = getTaskCount(b.id);
+    
+    // Sort by task count first (folders with more tasks first)
+    if (aTaskCount !== bTaskCount) {
+      return bTaskCount - aTaskCount;
+    }
+    
+    // Then sort by most recently created first
+    return b.createdAt - a.createdAt;
+  });
   
   return (
     <View>

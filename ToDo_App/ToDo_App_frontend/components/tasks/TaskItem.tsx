@@ -1,7 +1,8 @@
 import React, { useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Animated, StyleSheet, Dimensions } from 'react-native';
 import { CircleCheck as CheckCircle, Circle, Trash2, Edit, Calendar, AlertCircle } from 'lucide-react-native';
-import { useAppContext, Task } from '@/contexts/AppContext';
+import { Task } from '@/types/api';
+import { useTasks } from '@/hooks/useTasks';
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import Reanimated, {
   useAnimatedGestureHandler,
@@ -25,7 +26,7 @@ const ACTION_BUTTON_WIDTH = 80;
 const SWIPE_THRESHOLD_PERCENTAGE = 0.25;
 
 export default function TaskItem({ task }: TaskItemProps) {
-  const { toggleTask, deleteTask } = useAppContext();
+  const { toggleTask, deleteTask } = useTasks();
   const router = useRouter();
   const checkAnim = useRef(new Animated.Value(task.completed ? 1 : 0)).current;
   
@@ -122,12 +123,12 @@ export default function TaskItem({ task }: TaskItemProps) {
     if (hasOpened.value) triggerHaptic(false);
     hasOpened.value = false;
   };
-
+  
   const handleToggle = () => {
     if (hasOpened.value) {
       resetSwipe();
     } else {
-      toggleTask(task.id);
+    toggleTask(task.id);
     }
   };
 
@@ -163,7 +164,7 @@ export default function TaskItem({ task }: TaskItemProps) {
   const isDueDateOverdue = (dueDate: string) => {
     return isPast(new Date(dueDate)) && !isToday(new Date(dueDate));
   };
-
+  
   return (
     <View style={styles.container}>
       {/* Action buttons */}
@@ -191,41 +192,41 @@ export default function TaskItem({ task }: TaskItemProps) {
       {/* Main content */}
       <PanGestureHandler onGestureEvent={gestureHandler} activeOffsetX={[-10, 10]}>
         <Reanimated.View style={[styles.rowContent, animatedStyle]}>
-          <TouchableOpacity
-            activeOpacity={0.7}
+      <TouchableOpacity
+        activeOpacity={0.7}
             onPress={handleToggle}
             className="py-4 px-4 rounded-xl bg-background-secondary flex-row items-start"
-            style={styles.taskContainer}
-          >
+        style={styles.taskContainer}
+      >
             <TouchableOpacity 
               onPress={handleToggle} 
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               className="mt-1"
             >
-              {task.completed ? (
-                <CheckCircle color="#2D88FF" size={24} />
-              ) : (
-                <Circle color="#787878" size={24} />
-              )}
-            </TouchableOpacity>
-            
-            <View className="flex-1 ml-3">
+          {task.completed ? (
+            <CheckCircle color="#2D88FF" size={24} />
+          ) : (
+            <Circle color="#787878" size={24} />
+          )}
+        </TouchableOpacity>
+        
+        <View className="flex-1 ml-3">
               <View className="relative">
-                <Animated.Text 
+          <Animated.Text 
                   className="text-foreground font-['Inter-Medium'] text-base leading-5"
-                  style={{ opacity: textOpacity }}
-                  numberOfLines={2}
-                >
-                  {task.title}
-                </Animated.Text>
-                
-                {/* Animated strikethrough line */}
-                <Animated.View 
-                  style={[
-                    styles.strikethrough, 
-                    { width: strikeWidth }
-                  ]}
-                />
+            style={{ opacity: textOpacity }}
+            numberOfLines={2}
+          >
+            {task.title}
+          </Animated.Text>
+          
+          {/* Animated strikethrough line */}
+          <Animated.View 
+            style={[
+              styles.strikethrough, 
+              { width: strikeWidth }
+            ]}
+          />
               </View>
 
               {/* Description */}
@@ -277,8 +278,8 @@ export default function TaskItem({ task }: TaskItemProps) {
                   )}
                 </View>
               )}
-            </View>
-          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
         </Reanimated.View>
       </PanGestureHandler>
     </View>

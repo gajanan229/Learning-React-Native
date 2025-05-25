@@ -1,33 +1,36 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useContext, ReactNode } from 'react';
+import { Task, Folder } from '@/types/api';
+import { useTasks } from '@/hooks/useTasks';
+import { useFolders } from '@/hooks/useFolders';
 
-export interface Task {
-  id: string;
-  title: string;
-  completed: boolean;
-  folderId?: string;
-  createdAt: number;
-  description?: string;
-  priority?: 'high' | 'medium' | 'low';
-  dueDate?: string; // ISO string
-}
-
-export interface Folder {
-  id: string;
-  name: string;
-  createdAt: number;
-}
+// Re-export types for backwards compatibility
+export type { Task, Folder };
 
 interface AppContextProps {
+  // Data
   tasks: Task[];
   folders: Folder[];
-  addTask: (title: string, folderId?: string, description?: string, priority?: 'high' | 'medium' | 'low', dueDate?: string) => void;
-  updateTask: (id: string, updates: Partial<Task>) => void;
-  deleteTask: (id: string) => void;
-  toggleTask: (id: string) => void;
-  addFolder: (name: string) => void;
-  updateFolder: (id: string, name: string) => void;
-  deleteFolder: (id: string, deleteOption: 'keep' | 'delete') => void;
+  
+  // Loading states
+  isLoading: boolean;
+  error: string | null;
+  
+  // Task operations
+  addTask: (title: string, folderId?: string, description?: string, priority?: 'high' | 'medium' | 'low', dueDate?: string) => Promise<void>;
+  updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
+  toggleTask: (id: string) => Promise<void>;
+  
+  // Folder operations
+  addFolder: (name: string) => Promise<void>;
+  updateFolder: (id: string, name: string) => Promise<void>;
+  deleteFolder: (id: string, deleteOption?: 'keep' | 'delete') => Promise<void>;
+  
+  // Utility
+  refetch: () => Promise<void>;
+  clearError: () => void;
+  
+  // Legacy modal support (deprecated - will be removed in future versions)
   isModalVisible: boolean;
   modalType: 'task' | 'folder' | 'delete-folder' | null;
   currentFolderId?: string;
@@ -39,148 +42,106 @@ interface AppContextProps {
 const AppContext = createContext<AppContextProps | undefined>(undefined);
 
 export const AppContextProvider = ({ children }: { children: ReactNode }) => {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [folders, setFolders] = useState<Folder[]>([]);
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [modalType, setModalType] = useState<'task' | 'folder' | 'delete-folder' | null>(null);
-  const [currentItem, setCurrentItem] = useState<Task | Folder | null>(null);
-  const [currentFolderId, setCurrentFolderId] = useState<string | undefined>(undefined);
+  // Use the new backend-integrated hooks
+  const {
+    tasks,
+    isLoading: tasksLoading,
+    error: tasksError,
+    createTask,
+    updateTask: updateTaskHook,
+    deleteTask: deleteTaskHook,
+    toggleTask: toggleTaskHook,
+    refetch: refetchTasks,
+    clearError: clearTasksError
+  } = useTasks();
 
-  // Load data from storage on initial load
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const tasksData = await AsyncStorage.getItem('tasks');
-        const foldersData = await AsyncStorage.getItem('folders');
-        
-        if (tasksData) {
-          setTasks(JSON.parse(tasksData));
-        }
-        
-        if (foldersData) {
-          setFolders(JSON.parse(foldersData));
-        }
-      } catch (error) {
-        console.error('Error loading data:', error);
-      }
-    };
-    
-    loadData();
-  }, []);
+  const {
+    folders,
+    isLoading: foldersLoading,
+    error: foldersError,
+    createFolder,
+    updateFolder: updateFolderHook,
+    deleteFolder: deleteFolderHook,
+    refetch: refetchFolders,
+    clearError: clearFoldersError
+  } = useFolders();
 
-  // Save tasks to storage whenever they change
-  useEffect(() => {
-    const saveData = async () => {
-      try {
-        await AsyncStorage.setItem('tasks', JSON.stringify(tasks));
-      } catch (error) {
-        console.error('Error saving tasks:', error);
-      }
-    };
-    
-    saveData();
-  }, [tasks]);
+  // Combine loading states and errors
+  const isLoading = tasksLoading || foldersLoading;
+  const error = tasksError || foldersError;
 
-  // Save folders to storage whenever they change
-  useEffect(() => {
-    const saveData = async () => {
-      try {
-        await AsyncStorage.setItem('folders', JSON.stringify(folders));
-      } catch (error) {
-        console.error('Error saving folders:', error);
-      }
-    };
-    
-    saveData();
-  }, [folders]);
+  // Legacy modal state (deprecated)
+  const [isModalVisible, setIsModalVisible] = React.useState(false);
+  const [modalType, setModalType] = React.useState<'task' | 'folder' | 'delete-folder' | null>(null);
+  const [currentItem, setCurrentItem] = React.useState<Task | Folder | null>(null);
+  const [currentFolderId, setCurrentFolderId] = React.useState<string | undefined>(undefined);
 
-  // Add a new task
-  const addTask = (title: string, folderId?: string, description?: string, priority?: 'high' | 'medium' | 'low', dueDate?: string) => {
-    const newTask: Task = {
-      id: Date.now().toString(),
+  // Wrapper functions to maintain API compatibility
+  const addTask = async (title: string, folderId?: string, description?: string, priority?: 'high' | 'medium' | 'low', dueDate?: string) => {
+    const createData: any = {
       title,
-      completed: false,
-      folderId,
-      createdAt: Date.now(),
       description,
       priority,
       dueDate
     };
     
-    setTasks(prevTasks => [...prevTasks, newTask]);
-  };
-
-  // Update an existing task
-  const updateTask = (id: string, updates: Partial<Task>) => {
-    setTasks(prevTasks => 
-      prevTasks.map(task => 
-        task.id === id ? { ...task, ...updates } : task
-      )
-    );
-  };
-
-  // Delete a task
-  const deleteTask = (id: string) => {
-    setTasks(prevTasks => prevTasks.filter(task => task.id !== id));
-  };
-
-  // Toggle task completion
-  const toggleTask = (id: string) => {
-    setTasks(prevTasks => 
-      prevTasks.map(task => 
-        task.id === id ? { ...task, completed: !task.completed } : task
-      )
-    );
-  };
-
-  // Add a new folder
-  const addFolder = (name: string) => {
-    const newFolder: Folder = {
-      id: Date.now().toString(),
-      name,
-      createdAt: Date.now()
-    };
-    
-    setFolders(prevFolders => [...prevFolders, newFolder]);
-  };
-
-  // Update a folder
-  const updateFolder = (id: string, name: string) => {
-    setFolders(prevFolders => 
-      prevFolders.map(folder => 
-        folder.id === id ? { ...folder, name } : folder
-      )
-    );
-  };
-
-  // Delete a folder with option to keep or delete its tasks
-  const deleteFolder = (id: string, deleteOption: 'keep' | 'delete') => {
-    // Remove the folder
-    setFolders(prevFolders => prevFolders.filter(folder => folder.id !== id));
-    
-    // Handle the tasks based on the delete option
-    if (deleteOption === 'delete') {
-      // Delete all tasks in this folder
-      setTasks(prevTasks => prevTasks.filter(task => task.folderId !== id));
-    } else {
-      // Move tasks to ungrouped
-      setTasks(prevTasks => 
-        prevTasks.map(task => 
-          task.folderId === id ? { ...task, folderId: undefined } : task
-        )
-      );
+    if (folderId) {
+      createData.folderId = folderId;
     }
+    
+    await createTask(createData);
   };
 
-  // Show modal with specified type and optional item
+  const updateTask = async (id: string, updates: Partial<Task>) => {
+    // Convert updates to match API expectations
+    const updateData: any = { ...updates };
+    if (updateData.folderId !== undefined) {
+      // Handle folderId conversion if needed
+      updateData.folderId = updateData.folderId || undefined;
+    }
+    
+    await updateTaskHook(id, updateData);
+  };
+
+  const deleteTask = async (id: string) => {
+    await deleteTaskHook(id);
+  };
+
+  const toggleTask = async (id: string) => {
+    await toggleTaskHook(id);
+  };
+
+  const addFolder = async (name: string) => {
+    await createFolder({ name });
+  };
+
+  const updateFolder = async (id: string, name: string) => {
+    await updateFolderHook(id, { name });
+  };
+
+  const deleteFolder = async (id: string, deleteOption: 'keep' | 'delete' = 'keep') => {
+    // Note: The backend handles this automatically
+    await deleteFolderHook(id);
+  };
+
+  const refetch = async () => {
+    await Promise.all([refetchTasks(), refetchFolders()]);
+  };
+
+  const clearError = () => {
+    clearTasksError();
+    clearFoldersError();
+  };
+
+  // Legacy modal functions (deprecated)
   const showModal = (type: 'task' | 'folder' | 'delete-folder', item?: Task | Folder | null, folderId?: string) => {
+    console.warn('showModal is deprecated. Please use the new Create screens instead.');
     setModalType(type);
     setCurrentItem(item || null);
     setCurrentFolderId(folderId);
     setIsModalVisible(true);
   };
 
-  // Hide modal
   const hideModal = () => {
     setIsModalVisible(false);
     setModalType(null);
@@ -189,19 +150,34 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const contextValue: AppContextProps = {
+    // Data
     tasks,
     folders,
+    
+    // Loading states
+    isLoading,
+    error,
+    
+    // Task operations
     addTask,
     updateTask,
     deleteTask,
     toggleTask,
+    
+    // Folder operations
     addFolder,
     updateFolder,
     deleteFolder,
+    
+    // Utility
+    refetch,
+    clearError,
+    
+    // Legacy modal support (deprecated)
     isModalVisible,
     modalType,
-    currentItem,
     currentFolderId,
+    currentItem,
     showModal,
     hideModal
   };

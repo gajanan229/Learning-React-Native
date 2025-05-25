@@ -1,87 +1,93 @@
-import axios, { AxiosError, AxiosResponse } from 'axios';
-import type { InternalAxiosRequestConfig } from 'axios';
-import * as SecureStore from 'expo-secure-store';
-import { useAuthStore } from '../store/useAuthStore'; // For potential logout on 401
+import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios'; 
+import { useAuthStore } from '@/store/useAuthStore';
 
-// The EXPO_PUBLIC_ variables are available via process.env in Expo
-const EXPO_PUBLIC_TODO_BACKEND_URL = process.env.EXPO_PUBLIC_ALARM_BACKEND_URL;
+// Base URL for the TODO backend
+const BASE_URL = process.env.EXPO_PUBLIC_TODO_BACKEND_URL || 'http://localhost:3002/api';
 
-if (!EXPO_PUBLIC_TODO_BACKEND_URL) {
-    console.error("CRITICAL: EXPO_PUBLIC_TODO_BACKEND_URL is not defined. Please check your .env file and expo-env.d.ts");
-}
-
-const todoApiClient = axios.create({
-    baseURL: EXPO_PUBLIC_TODO_BACKEND_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
-    timeout: 10000, // 10 second timeout
+// Create axios instance
+const todoApiClient: AxiosInstance = axios.create({
+  baseURL: BASE_URL,
+  timeout: 10000, // 10 seconds
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-// Request Interceptor: Attaches JWT token to every request
+// Request interceptor to add authentication token
 todoApiClient.interceptors.request.use(
-    async (config: InternalAxiosRequestConfig) => {
-        try {
-            // Retrieve the token, ensuring consistency with how it's stored
-            const token = await SecureStore.getItemAsync('userToken');
-            if (token && config.headers) {
-                config.headers.Authorization = `Bearer ${token}`;
-            }
-        } catch (e) {
-            console.error("Error retrieving token from SecureStore in interceptor:", e);
-        }
-        return config;
-    },
-    (error: AxiosError) => {
-        console.error('Axios request interceptor error:', error.toJSON ? error.toJSON() : error);
-        return Promise.reject(error);
+  (config) => {
+    // Get the current auth token from the store
+    const authState = useAuthStore.getState();
+    const token = authState.authToken;
+    
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Log request in development
+    if (__DEV__) {
+      console.log(`[TODO API] ${config.method?.toUpperCase()} ${config.url}`, {
+        params: config.params,
+        data: config.data,
+      });
+    }
+    
+    return config;
+  },
+  (error) => {
+    console.error('[TODO API] Request error:', error);
+    return Promise.reject(error);
+  }
 );
 
-// Response Interceptor: Handles common API errors
+// Response interceptor for error handling and data unwrapping
 todoApiClient.interceptors.response.use(
-    (response: AxiosResponse) => response, // Explicitly typed response
-    (error: AxiosError) => {
-        const { response } = error;
-        if (response) {
-            // The request was made and the server responded with a status code
-            // that falls out of the range of 2xx
-            console.error(
-                'Axios response error:', 
-                JSON.stringify({ 
-                    status: response.status, 
-                    data: response.data,
-                    message: error.message,
-                    url: error.config?.url,
-                    method: error.config?.method,
-                }, null, 2)
-            );
-
-            if (response.status === 401) {
-                // Unauthorized: Token might be invalid, expired, or not provided correctly
-                // Trigger logout action from useAuthStore
-                // This assumes useAuthStore is set up to handle global logout
-                console.warn('Received 401 from ToDo API. Attempting to log out user.');
-                // Ensure logout also clears SecureStore token
-                useAuthStore.getState().logout(); 
-            } else if (response.status === 403) {
-                // Forbidden: User is authenticated but doesn't have permission
-                console.warn('Received 403 Forbidden from ToDo API.');
-                // You might want to show a specific message or redirect
-            }
-            // For other errors (400, 404, 500), the specific service function will typically handle them
-            // by catching the error and processing it.
-        } else if (error.request) {
-            // The request was made but no response was received
-            // `error.request` is an instance of XMLHttpRequest in the browser and an instance of
-            // http.ClientRequest in node.js
-            console.error('Axios response error: No response received.', error.request ? JSON.stringify(error.request) : error.request);
-        } else {
-            // Something happened in setting up the request that triggered an Error
-            console.error('Axios response error: Error setting up request.', error.message);
-        }
-        return Promise.reject(error); // Propagate error so service functions can catch it
+  (response: AxiosResponse) => {
+    // Log response in development
+    if (__DEV__) {
+      console.log(`[TODO API] Response:`, response.data);
     }
+    
+    // The backend wraps responses in { success, message, data }
+    // We'll return the whole response but the services can access .data
+    return response;
+  },
+  (error: AxiosError) => {
+    // Log error in development
+    if (__DEV__) {
+      console.error('[TODO API] Response error:', error.response?.data || error.message);
+    }
+    
+    // Handle specific error cases
+    if (error.response?.status === 401) {
+      // Unauthorized - redirect to login
+      console.warn('[TODO API] Unauthorized access, redirecting to login');
+      const authState = useAuthStore.getState();
+      authState.logout(); // This should handle navigation to login
+    }
+    
+    if (error.response?.status === 403) {
+      // Forbidden
+      console.warn('[TODO API] Forbidden access');
+    }
+    
+    if (error.response?.status === 404) {
+      // Not found
+      console.warn('[TODO API] Resource not found');
+    }
+    
+    if (error.response && error.response.status >= 500) {
+      // Server error
+      console.error('[TODO API] Server error');
+    }
+    
+    // Network error
+    if (!error.response) {
+      console.error('[TODO API] Network error - check connection');
+    }
+    
+    return Promise.reject(error);
+  }
 );
 
 export default todoApiClient; 

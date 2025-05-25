@@ -51,7 +51,8 @@ export default function ActionButton({ mode = 'task', folderId }: ActionButtonPr
   const handleAddTask = () => {
     setIsExpanded(false);
     rotation.value = withSpring(0);
-    router.push('/Create/new-task');
+    const route = folderId ? `/Create/new-task?folderId=${folderId}` : '/Create/new-task';
+    router.push(route as any);
   };
   
   const handleAddFolder = () => {
