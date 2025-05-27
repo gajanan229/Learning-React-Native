@@ -30,15 +30,22 @@
 
 ## Project Description
 
-The Movie App is a comprehensive mobile application designed for movie enthusiasts, developed as a learning project. It allows users to discover movies, track what they've watched, rate and review films, and organize movies into custom lists. The application features a React Native (Expo) frontend for a smooth mobile experience and a Node.js (Express) backend powering the API and database interactions.
+The Movie App is a comprehensive mobile application designed for movie enthusiasts, developed as a learning project. It allows users to discover movies, track what they've watched, rate and review films, and organize movies into custom lists. 
+
+The application features a **microservices architecture** with:
+- **React Native (Expo) frontend** for a smooth mobile experience
+- **Movie App Backend** (Node.js/Express) for movie-related API and database interactions
+- **Authentication Backend** (separate service) for user authentication and JWT token management
+
+This separation of concerns allows for better scalability, maintainability, and the ability to reuse the Authentication service across multiple applications.
 
 ## Features
 
 ### Core Features
 *   **Movie Discovery:** Search for movies, view trending movies (placeholder, requires TMDB API or similar integration for live data).
 *   **Detailed Movie Information:** View movie details including poster, title, overview, runtime, genres, budget, revenue, and production companies (fetched from TMDB API via backend).
-*   **User Authentication:** Secure user registration and login using JWT (JSON Web Tokens) and bcryptjs for password hashing.
-*   **Protected Routes:** Middleware to protect user-specific backend routes.
+*   **External Authentication:** Integrates with a separate Authentication Backend service for secure user registration, login, and JWT token validation.
+*   **Protected Routes:** Middleware to protect user-specific backend routes by validating tokens against the external Authentication service.
 
 ### User Account Features
 *   **User Profile:** Placeholder for user profile display.
@@ -92,8 +99,7 @@ The Movie App is a comprehensive mobile application designed for movie enthusias
 *   **Express.js:** Web application framework for Node.js.
 *   **PostgreSQL:** Relational database.
 *   **`pg` (node-postgres):** PostgreSQL client for Node.js.
-*   **JSON Web Token (`jsonwebtoken`):** For generating and verifying JWTs.
-*   **`bcryptjs`:** For hashing passwords.
+*   **`axios`:** HTTP client for communicating with external Authentication service.
 *   **`dotenv`:** For managing environment variables.
 *   **`cors`:** For enabling Cross-Origin Resource Sharing.
 *   **ES6 Modules.**
@@ -128,13 +134,51 @@ The project is organized into two main directories:
 *   **npm** (comes with Node.js) or **Yarn**
 *   **Expo Go** app on your mobile device (for testing the frontend) or an Android/iOS emulator/simulator.
 *   **PostgreSQL** server installed and running.
+*   **Authentication Backend** service running (separate service for user authentication).
 *   A TMDB (The Movie Database) API Key for fetching movie data.
 
 ## Setup and Installation
 
-### 1. Backend Setup (`Movie_app_backend`)
+### 1. Authentication Backend Setup
 
-1.  **Navigate to the backend directory:**
+First, set up the separate Authentication Backend service:
+
+1.  **Navigate to the Authentication Backend directory:**
+    ```bash
+    cd Authentication_Backend
+    ```
+
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
+
+3.  **Set up the Authentication Database:**
+    *   Create a separate database for authentication (e.g., `auth_db`).
+    *   Execute the SQL commands in `Authentication_Backend/schema.sql` to create the users table.
+
+4.  **Create Environment Variables File:**
+    *   Create a `.env` file in the `Authentication_Backend` root directory:
+        ```env
+        PORT=3001
+        DB_HOST=localhost
+        DB_PORT=5432
+        DB_NAME=auth_db
+        DB_USER=your_postgres_user
+        DB_PASSWORD=your_postgres_password
+        JWT_SECRET=your_very_strong_jwt_secret
+        JWT_EXPIRES_IN=7d
+        ```
+
+5.  **Start the Authentication service:**
+    ```bash
+    npm start
+    ```
+    The Authentication service will start on `http://localhost:3001`.
+
+### 2. Movie App Backend Setup (`Movie_app_backend`)
+
+1.  **Navigate to the Movie app backend directory:**
     ```bash
     cd Movie_app_backend
     ```
@@ -148,31 +192,31 @@ The project is organized into two main directories:
 
 3.  **Set up PostgreSQL Database:**
     *   Ensure your PostgreSQL server is running.
-    *   Create a new database (e.g., `movie_app_db`).
+    *   Create a new database for the movie app (e.g., `movie_app_db`).
     *   Connect to your database using `psql` or a GUI tool. Execute the SQL commands found in the `schema.sql` file located in the root of the `Movie_app_Project` directory. This will create the necessary tables, types, functions, and triggers.
 
 4.  **Create Environment Variables File:**
     *   Create a `.env` file in the `Movie_app_backend` root directory.
-    *   Add the following variables (see [Environment Variables](#backend-movie_app_backendenv) section for details):
+    *   Add the following variables (see [Environment Variables](#movie-app-backend-movie_app_backendenv) section for details):
         ```env
-        PORT=3001
+        PORT=3002
         DB_USER=your_postgres_user
         DB_HOST=localhost
         DB_DATABASE=movie_app_db
         DB_PASSWORD=your_postgres_password
         DB_PORT=5432
-        JWT_SECRET=your_very_strong_jwt_secret
+        AUTH_URL=http://localhost:3001
         ```
 
-5.  **Start the backend server:**
+5.  **Start the Movie app backend server:**
     ```bash
     npm start
     # or
     # yarn start
     ```
-    The server should typically start on `http://localhost:3001` (or the port specified in your `.env`).
+    The server should start on `http://localhost:3002` (or the port specified in your `.env`).
 
-### 2. Frontend Setup (`Movie_app`)
+### 3. Frontend Setup (`Movie_app`)
 
 1.  **Navigate to the frontend directory:**
     ```bash
@@ -191,7 +235,8 @@ The project is organized into two main directories:
     *   Add the following variables (see [Environment Variables](#frontend-movie_appenv) section for details):
         ```env
         EXPO_PUBLIC_MOVIE_API_KEY=your_tmdb_api_key
-        EXPO_PUBLIC_BACKEND_URL=http://localhost:3001 # Or your backend server's accessible URL
+        EXPO_PUBLIC_BACKEND_URL=http://localhost:3002 # Movie app backend URL
+        EXPO_PUBLIC_AUTH_BACKEND_URL=http://localhost:3001 # Authentication backend URL
         ```
     *   **Note:** For TMDB API key, you need to register at [TMDB](https://www.themoviedb.org/documentation/api) to get one. The `EXPO_PUBLIC_` prefix is important for Expo projects to expose these variables to the client-side bundle.
 
@@ -206,11 +251,43 @@ The project is organized into two main directories:
     *   Run on an Android emulator/simulator (press `a`).
     *   Run on an iOS simulator (press `i`).
 
+## Testing the Integration
+
+After setting up both backend services, you can test that they're working together correctly:
+
+1.  **Start both backend services:**
+    ```bash
+    # Terminal 1: Start Authentication Backend
+    cd Authentication_Backend
+    npm start
+
+    # Terminal 2: Start Movie App Backend
+    cd Movie_app_backend
+    npm start
+    ```
+
+2.  **Run the integration test:**
+    ```bash
+    cd Movie_app_backend
+    npm run test:auth
+    ```
+
+This test will verify:
+- Authentication service is running and responding
+- Movie backend auth middleware is working
+- Public endpoints are accessible
+- Services can communicate with each other
+
+The test should show all green checkmarks if everything is configured correctly.
+
 ## Database Schema Overview
 
-The PostgreSQL database includes the following key tables:
+The Movie App uses two separate PostgreSQL databases:
 
-*   `users`: Stores user credentials and profile information.
+### Authentication Database
+*   `users`: Stores user credentials and profile information (managed by Authentication Backend).
+
+### Movie App Database
 *   `movies`: Stores general movie details (TMDB ID, title, poster URL, etc.), acting as a cache.
 *   `search_events`: Logs movie search occurrences to identify trending movies.
 *   `user_watched_movies`: Tracks movies watched by users, including their ratings, reviews, and watch dates.
@@ -221,38 +298,60 @@ All tables include `created_at` and `updated_at` timestamps, automatically manag
 
 ## API Endpoints Overview
 
-The backend exposes RESTful API endpoints under the `/api` prefix. Key route groups include:
+The Movie App backend exposes RESTful API endpoints under the `/api` prefix. Key route groups include:
 
-*   `/api/auth`: User registration (`/register`) and login (`/login`), get current user (`/me`).
-*   `/api/watched`: Manage user's watched movies (add/update, get all, get specific, remove).
-*   `/api/profile`: Fetch user-specific profile statistics.
-*   `/api/lists`: Manage user movie lists (create, get all, get details with movies, update, delete, add movie to list, remove movie from list).
-*   `/api/searches`: Log movie search events.
-*   `/api/movies/trending`: Get trending movies based on search events.
-*   `/api/admin/cleanup`: (Placeholder) For administrative tasks.
+*   `/api/watched`: Manage user's watched movies (add/update, get all, get specific, remove) - **Protected**.
+*   `/api/profile`: Fetch user-specific profile statistics - **Protected**.
+*   `/api/lists`: Manage user movie lists (create, get all, get details with movies, update, delete, add movie to list, remove movie from list) - **Protected**.
+*   `/api/searches`: Log movie search events - **Public**.
+*   `/api/movies/trending`: Get trending movies based on search events - **Public**.
+*   `/api/admin/cleanup`: (Placeholder) For administrative tasks - **Public**.
+
+**Note:** Authentication endpoints (`/api/auth`) are handled by the separate Authentication Backend service:
+*   `/api/auth/register`: User registration.
+*   `/api/auth/login`: User login.
+*   `/api/auth/me`: Get current user profile (used for token validation).
 
 ## Environment Variables
 
-### Backend (`Movie_app_backend/.env`)
+### Movie App Backend (`Movie_app_backend/.env`)
 
-*   `PORT`: Port for the backend server (e.g., `3001`).
+*   `PORT`: Port for the Movie app backend server (e.g., `3002`).
 *   `DB_USER`: PostgreSQL username.
 *   `DB_HOST`: PostgreSQL server host (e.g., `localhost`).
-*   `DB_DATABASE`: PostgreSQL database name.
+*   `DB_DATABASE`: PostgreSQL database name for movie data.
 *   `DB_PASSWORD`: PostgreSQL user password.
 *   `DB_PORT`: PostgreSQL server port (e.g., `5432`).
+*   `AUTH_URL`: URL of the Authentication Backend service (e.g., `http://localhost:3001`).
+
+### Authentication Backend (`Authentication_Backend/.env`)
+
+*   `PORT`: Port for the Authentication backend server (e.g., `3001`).
+*   `DB_HOST`: PostgreSQL server host (e.g., `localhost`).
+*   `DB_PORT`: PostgreSQL server port (e.g., `5432`).
+*   `DB_NAME`: PostgreSQL database name for authentication data.
+*   `DB_USER`: PostgreSQL username.
+*   `DB_PASSWORD`: PostgreSQL user password.
 *   `JWT_SECRET`: A strong, unique secret key for signing JWTs.
+*   `JWT_EXPIRES_IN`: JWT token expiration time (e.g., `7d`).
 
 ### Frontend (`Movie_app/.env`)
 
 *   `EXPO_PUBLIC_MOVIE_API_KEY`: Your API key from The Movie Database (TMDB).
-*   `EXPO_PUBLIC_BACKEND_URL`: The base URL of your running backend server (e.g., `http://localhost:3001` for local development, or your deployed backend URL. If using Expo Go on a physical device, this needs to be your computer's local network IP, e.g., `http://192.168.1.X:3001`).
+*   `EXPO_PUBLIC_BACKEND_URL`: The base URL of your Movie app backend server (e.g., `http://localhost:3002` for local development, or your deployed backend URL. If using Expo Go on a physical device, this needs to be your computer's local network IP, e.g., `http://192.168.1.X:3002`).
+*   `EXPO_PUBLIC_AUTH_BACKEND_URL`: The base URL of your Authentication backend server (e.g., `http://localhost:3001` for local development, or your deployed auth backend URL. If using Expo Go on a physical device, this needs to be your computer's local network IP, e.g., `http://192.168.1.X:3001`).
 
 ## Available Scripts
 
-### Backend (`Movie_app_backend`)
+### Authentication Backend (`Authentication_Backend`)
 
-*   `npm start` or `yarn start`: Starts the backend development server (typically using `nodemon` if configured, or `node index.js`).
+*   `npm start` or `yarn start`: Starts the Authentication backend server.
+*   `npm run dev` or `yarn dev`: Starts the Authentication backend with nodemon for development.
+
+### Movie App Backend (`Movie_app_backend`)
+
+*   `npm start` or `yarn start`: Starts the Movie app backend server (typically using `nodemon` if configured, or `node index.js`).
+*   `npm run test:auth`: Tests the integration between Movie backend and Authentication service.
 
 
 ### Frontend (`Movie_app`)
@@ -261,11 +360,5 @@ The backend exposes RESTful API endpoints under the `/api` prefix. Key route gro
 *   `npx expo android` or `yarn expo android`: Starts the app on a connected Android device or emulator.
 *   `npx expo ios` or `yarn expo ios`: Starts the app on an iOS simulator (macOS only).
 *   `npx expo web` or `yarn expo web`: Starts the app in a web browser (if configured for web).
-
-
-## License
-
-This project is licensed under the MIT License. See the `LICENSE` file for details.
-(Create a `LICENSE` file in the root of `Movie_app_Project` with the MIT License text if you choose this license).
 
 ---

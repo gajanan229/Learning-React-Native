@@ -3,20 +3,18 @@ dotenv.config();
 import express from 'express';
 import pool from './config/db.js'; // Added .js extension
 import cors from 'cors';
-import authRoutes from './routes/authRoutes.js'; // Import auth routes
 import watchedMovieRoutes from './routes/watchedMovieRoutes.js'; // Import watched movie routes
 import profileStatsRoutes from './routes/profileStatsRoutes.js'; // Import profile stats routes
 import listRoutes from './routes/listRoutes.js'; // Import list routes
 
 const app = express();
-const port = process.env.PORT || 3001; // Use environment variable or default
+const port = process.env.PORT || 3002; // Default to 3002 to avoid conflict with auth service
 
 // Middleware
 app.use(cors()); // Enable CORS for all origins (adjust for production)
 app.use(express.json()); // Parse JSON request bodies
 
-// Mount auth routes
-app.use('/api/auth', authRoutes);
+// Note: Authentication is handled by external Authentication service
 
 // Mount watched movie routes
 app.use('/api/watched', watchedMovieRoutes);

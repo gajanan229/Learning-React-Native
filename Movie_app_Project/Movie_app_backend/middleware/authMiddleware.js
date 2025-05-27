@@ -1,5 +1,6 @@
-import { verifyToken } from '../utils/tokenUtils.js';
-import { findUserById } from '../models/userModel.js';
+import axios from 'axios';
+
+const AUTH_SERVICE_URL = process.env.AUTH_URL || 'http://localhost:3002';
 
 export const protect = async (req, res, next) => {
     let token;
@@ -9,35 +10,41 @@ export const protect = async (req, res, next) => {
         try {
             // Extract token (Bearer <TOKEN>)
             token = req.headers.authorization.split(' ')[1];
-
-            // 2. Verify token
-            const decoded = verifyToken(token);
-
-            if (!decoded || !decoded.user || !decoded.user.id) {
-                return res.status(401).json({ message: 'Not authorized, token failed (invalid payload)' });
+            
+            // 2. Validate token against external Auth service
+            const authResponse = await axios.get(`${AUTH_SERVICE_URL}/api/auth/me`, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                },
+                timeout: 5000 // 5 second timeout
+            });
+            // 3. If validation successful, attach user to request
+            if (authResponse.data && authResponse.data.id) {
+                req.user = authResponse.data;
+                console.log(req.user);
+                next(); // Proceed to the next middleware or route handler
+            } else {
+                return res.status(401).json({ message: 'Not authorized, invalid user data' });
             }
-
-            // 3. (Optional but recommended) Get user from DB and attach to req object
-            // We use decoded.user.id because that's how we structured the payload in generateToken
-            const user = await findUserById(decoded.user.id);
-
-            if (!user) {
-                return res.status(401).json({ message: 'Not authorized, user not found' });
-            }
-
-            // Remove password_hash before attaching to req.user
-            const { password_hash, ...userWithoutPassword } = user;
-            req.user = userWithoutPassword;
-
-            next(); // Proceed to the next middleware or route handler
         } catch (error) {
-            // Handle errors from verifyToken (e.g., expired, malformed) or findUserById
-            console.error('Authentication error:', error);
-            if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
-                 return res.status(401).json({ message: 'Not authorized, token failed (verification error)' });
-            }
-            // For other errors, pass to the global error handler or send a generic message
+            // Handle errors from external auth service
+            console.error('Authentication error:', error.message);
+            
+            if (error.response) {
+                // Auth service responded with error (401, 403, etc.)
+                return res.status(error.response.status).json({ 
+                    message: error.response.data?.message || 'Not authorized, token validation failed' 
+                });
+            } else if (error.code === 'ECONNREFUSED') {
+                // Auth service is down
+                return res.status(503).json({ message: 'Authentication service unavailable' });
+            } else if (error.code === 'ECONNABORTED') {
+                // Timeout
+                return res.status(504).json({ message: 'Authentication service timeout' });
+            } else {
+                // Other network or parsing errors
             return res.status(401).json({ message: 'Not authorized, token processing error' });
+            }
         }
     }
 

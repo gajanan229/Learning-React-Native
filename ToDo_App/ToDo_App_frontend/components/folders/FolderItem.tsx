@@ -109,7 +109,7 @@ export default function FolderItem({ folder, taskCount, completionCount }: Folde
       resetSwipe();
     } else {
       console.log(`🔍 Navigating to folder: ${folder.id} (${folder.name})`);
-      router.push(`/folder/${folder.id}`);
+    router.push(`/folder/${folder.id}`);
     }
   };
   
@@ -175,37 +175,37 @@ export default function FolderItem({ folder, taskCount, completionCount }: Folde
       {/* Main content */}
       <PanGestureHandler onGestureEvent={gestureHandler} activeOffsetX={[-10, 10]}>
         <Reanimated.View style={[styles.rowContent, animatedStyle]}>
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={handlePress}
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={handlePress}
             className="p-4 rounded-xl bg-background-secondary"
-            style={styles.folderContainer}
-          >
-            <View className="flex-row items-center mb-3">
-              <Folder color="#2D88FF" size={24} />
-              <Text className="ml-2 text-lg font-['Inter-Medium'] text-foreground flex-1">
-                {folder.name}
-              </Text>
-            </View>
-            
-            <View className="mt-1">
-              <View className="flex-row justify-between mb-2">
-                <Text className="text-foreground-secondary text-sm">Progress</Text>
-                <Text className="text-foreground-secondary text-sm">{completionPercentage}%</Text>
-              </View>
-              
-              <View className="h-2 bg-background rounded-full overflow-hidden">
-                <View 
-                  className="h-full bg-accent"
-                  style={{ width: `${completionPercentage}%` }}
-                />
-              </View>
-              
-              <Text className="mt-2 text-foreground-tertiary text-xs">
-                {completionCount} of {taskCount} tasks completed
-              </Text>
-            </View>
-          </TouchableOpacity>
+      style={styles.folderContainer}
+    >
+      <View className="flex-row items-center mb-3">
+        <Folder color="#2D88FF" size={24} />
+        <Text className="ml-2 text-lg font-['Inter-Medium'] text-foreground flex-1">
+          {folder.name}
+        </Text>
+      </View>
+      
+      <View className="mt-1">
+        <View className="flex-row justify-between mb-2">
+          <Text className="text-foreground-secondary text-sm">Progress</Text>
+          <Text className="text-foreground-secondary text-sm">{completionPercentage}%</Text>
+        </View>
+        
+        <View className="h-2 bg-background rounded-full overflow-hidden">
+          <View 
+            className="h-full bg-accent"
+            style={{ width: `${completionPercentage}%` }}
+          />
+        </View>
+        
+        <Text className="mt-2 text-foreground-tertiary text-xs">
+          {completionCount} of {taskCount} tasks completed
+        </Text>
+      </View>
+    </TouchableOpacity>
         </Reanimated.View>
       </PanGestureHandler>
     </View>

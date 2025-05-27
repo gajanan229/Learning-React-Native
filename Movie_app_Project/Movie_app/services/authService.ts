@@ -1,4 +1,5 @@
-import { BACKEND_BASE_URL } from './api'; // Assuming BACKEND_BASE_URL is exported from api.ts
+const BACKEND_BASE_URL = process.env.EXPO_PUBLIC_AUTH_URL 
+console.log(BACKEND_BASE_URL);
 
 // Define expected response structures
 export interface User {
